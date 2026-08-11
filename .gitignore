@@ -1,0 +1,38 @@
+## Visual Studio / .NET / WPF .gitignore
+
+# Build output & binaries
+**/[Bb]in/
+**/[Oo]bj/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Tt]est[Rr]esult*/
+[Bb]uildLog.*
+
+# Visual Studio temporary files, user settings, & cache
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+*.cduser
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+packages/
+
+# IDE & OS Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/

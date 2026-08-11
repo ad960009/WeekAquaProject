@@ -1,0 +1,380 @@
+<Window x:Class="WeekAquaWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WeekAquaWPF"
+        xmlns:vm="clr-namespace:WeekAquaWPF.ViewModels"
+        mc:Ignorable="d"
+        Title="WeekAqua BLE Controller (C# WPF)" Height="800" Width="1200"
+        Background="#18181B" Foreground="#F4F4F5"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Malgun Gothic"/>
+            <Setter Property="Foreground" Value="#E4E4E7"/>
+        </Style>
+
+        <!-- Custom Card Container Style -->
+        <Style x:Key="CardPanel" TargetType="Border">
+            <Setter Property="Background" Value="#27272A"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3B82F6"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="4,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#52525B"/>
+                    <Setter Property="Foreground" Value="#A1A1AA"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <!-- Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Main Content -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#09090B" CornerRadius="8" Padding="16,12" Margin="0,0,0,16" BorderBrush="#27272A" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="⚡ WeekAqua BLE Control Center" FontSize="20" FontWeight="Bold" Foreground="#60A5FA" VerticalAlignment="Center"/>
+                    <TextBlock Text="v1.0 (C# WPF)" FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Bottom" Margin="8,0,0,2"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Status: " FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Border Padding="8,4" CornerRadius="4">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#374151"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                        <Setter Property="Background" Value="#065F46"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding ConnectionStatusText}" FontWeight="Bold" Foreground="#34D399"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Content Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="420"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel (Device Scan + Manual Spectrum + Plug Power) -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,8,0">
+                <StackPanel>
+                    <!-- 1. BLE Connection Card -->
+                    <Border Style="{StaticResource CardPanel}">
+                        <StackPanel>
+                            <TextBlock Text="📶 Bluetooth Device Scanner" FontSize="16" FontWeight="Bold" Foreground="#93C5FD" Margin="0,0,0,12"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Content="🔍 Scan" Command="{Binding ScanCommand}"/>
+                                <Button Grid.Column="1" Content="⚡ Connect" Command="{Binding ConnectCommand}"/>
+                                <Button Grid.Column="2" Content="❌ Disconnect" Command="{Binding DisconnectCommand}" Background="#EF4444"/>
+                            </Grid>
+
+                            <ListBox ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDevice}"
+                                     Height="110" Background="#18181B" BorderBrush="#3F3F46" Foreground="#F4F4F5"
+                                     Margin="0,4,0,0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="4,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding MacAddress}" FontSize="11" Foreground="#A1A1AA"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding Rssi, StringFormat='{}{0} dBm'}" FontSize="11" Foreground="#34D399" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. Live Spectrum Control Card -->
+                    <Border Style="{StaticResource CardPanel}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="🎨 Live Spectrum Control (FBF9)" FontSize="16" FontWeight="Bold" Foreground="#F472B6"/>
+                                <CheckBox Content="Auto-Send" IsChecked="{Binding AutoSendLiveSpectrum}" Foreground="#A1A1AA" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Red Channel -->
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Red" Foreground="#EF4444" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding RedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding RedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding RedByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- Green Channel -->
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Green" Foreground="#10B981" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding GreenPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding GreenPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding GreenByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- Blue Channel -->
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Blue" Foreground="#3B82F6" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BluePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding BluePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding BlueByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- White / UV Channel -->
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="White/UV" Foreground="#F59E0B" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding WhitePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding WhitePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding WhiteByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- Cooling Fan Speed -->
+                            <Grid Margin="0,8,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Fan" Foreground="#A7F3D0" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding FanSpeedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding FanSpeedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding FanByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <Button Content="🚀 Send Live Spectrum Packet" Command="{Binding SendLiveSpectrumCommand}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 3. Quick Control &amp; Clock Sync Card -->
+                    <Border Style="{StaticResource CardPanel}">
+                        <StackPanel>
+                            <TextBlock Text="⏱️ Clock &amp; Mode Quick Actions" FontSize="16" FontWeight="Bold" Foreground="#FBBF24" Margin="0,0,0,12"/>
+                            
+                            <Button Content="🕒 Sync Smartphone RTC Clock (0xFF)" Command="{Binding SyncRtcTimeCommand}" Background="#8B5CF6" Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Mode Selection (FDF1 ~ FDF5):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>
+                            <UniformGrid Columns="5" Margin="0,0,0,12">
+                                <Button Content="P1" Command="{Binding SelectModeCommand}" CommandParameter="1" Background="#374151"/>
+                                <Button Content="P2" Command="{Binding SelectModeCommand}" CommandParameter="2" Background="#374151"/>
+                                <Button Content="P3" Command="{Binding SelectModeCommand}" CommandParameter="3" Background="#374151"/>
+                                <Button Content="P4" Command="{Binding SelectModeCommand}" CommandParameter="4" Background="#374151"/>
+                                <Button Content="Custom" Command="{Binding SelectModeCommand}" CommandParameter="5" Background="#059669"/>
+                            </UniformGrid>
+
+                            <TextBlock Text="App Spectrum Presets (Quick Apply):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>
+                            <WrapPanel Margin="0,0,0,0">
+                                <Button Content="🌱 Green Plant" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="GreenGrass" Background="#166534" Margin="0,0,4,4"/>
+                                <Button Content="🌺 Red Plant" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="RedGrass" Background="#991B1B" Margin="0,0,4,4"/>
+                                <Button Content="🐟 Fish/Mixed" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="FishMixed" Background="#1E40AF" Margin="0,0,4,4"/>
+                                <Button Content="🪸 Coral/Marine" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralMarine" Background="#5B21B6" Margin="0,0,4,4"/>
+                                <Button Content="💥 Cycling Max" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="AlgaeMax" Background="#9A3412" Margin="0,0,4,4"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. Smart Plug Power Monitor Card -->
+                    <Border Style="{StaticResource CardPanel}">
+                        <StackPanel>
+                            <TextBlock Text="⚡ Smart Plug Energy Meter" FontSize="16" FontWeight="Bold" Foreground="#34D399" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Live Power Consumption:" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding PowerKwh, StringFormat='{}{0:0.0} kWh'}" FontSize="20" FontWeight="Bold" Foreground="#10B981"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Right Panel (Ramp Scheduler + Packet Terminal Log) -->
+            <Grid Grid.Column="1" Margin="8,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Ramp Schedule Editor Card -->
+                <Border Grid.Row="0" Style="{StaticResource CardPanel}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📅 Ramp-up/down Schedule Editor (Points 1~12)" FontSize="16" FontWeight="Bold" Foreground="#A78BFA"/>
+                                <TextBlock Text=" Queue Delay: 500ms" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <Button Content="📡 Sync All Schedule Slots" Command="{Binding SyncAllRampSlotsCommand}" HorizontalAlignment="Right" Background="#7C3AED"/>
+                        </Grid>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding RampSlots}" AutoGenerateColumns="False"
+                                  CanUserAddRows="False" Background="#18181B" RowBackground="#27272A"
+                                  AlternatingRowBackground="#1F1F23" Foreground="#F4F4F5"
+                                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#3F3F46"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsEnabled, Mode=TwoWay}" Width="50"/>
+                                <DataGridTextColumn Header="Point" Binding="{Binding PointId}" IsReadOnly="True" Width="50"/>
+                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTimeStr}" Width="80"/>
+                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTimeStr}" Width="80"/>
+                                <DataGridTextColumn Header="Red %" Binding="{Binding RedPercent, StringFormat='{}{0:0}'}" Width="60"/>
+                                <DataGridTextColumn Header="Green %" Binding="{Binding GreenPercent, StringFormat='{}{0:0}'}" Width="60"/>
+                                <DataGridTextColumn Header="Blue %" Binding="{Binding BluePercent, StringFormat='{}{0:0}'}" Width="60"/>
+                                <DataGridTextColumn Header="White %" Binding="{Binding WhitePercent, StringFormat='{}{0:0}'}" Width="60"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- BLE Packet Terminal Log Card -->
+                <Border Grid.Row="1" Style="{StaticResource CardPanel}" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="🖥️ Raw BLE Packet Log" FontSize="16" FontWeight="Bold" Foreground="#38BDF8"/>
+                            <Button Content="Clear" Command="{Binding ClearLogCommand}" HorizontalAlignment="Right" Background="#475569" Padding="8,2"/>
+                        </Grid>
+
+                        <ListBox Grid.Row="1" ItemsSource="{Binding LogEntries}" Background="#09090B" BorderBrush="#27272A" Foreground="#F4F4F5">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="4,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="50"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Text="{Binding FormattedTime}" FontSize="11" Foreground="#71717A" VerticalAlignment="Center"/>
+
+                                        <Border Grid.Column="1" Padding="4,1" CornerRadius="3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#3B82F6"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DirectionString}" Value="TX">
+                                                            <Setter Property="Background" Value="#10B981"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding DirectionString}" Value="RX">
+                                                            <Setter Property="Background" Value="#8B5CF6"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding DirectionString}" Value="Error">
+                                                            <Setter Property="Background" Value="#EF4444"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding DirectionString}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="2" Text="{Binding Message}" FontSize="12" Margin="6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding HexData}" FontFamily="Consolas" FontSize="12" Foreground="#F59E0B" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
