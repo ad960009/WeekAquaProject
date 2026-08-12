@@ -371,11 +371,11 @@
 
                             <TextBlock Text="Mode Selection (FDF1 ~ FDF5):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>
                             <UniformGrid Columns="5" Margin="0,0,0,12">
-                                <Button Content="P1" Command="{Binding SelectModeCommand}" CommandParameter="1" Background="#374151"/>
-                                <Button Content="P2" Command="{Binding SelectModeCommand}" CommandParameter="2" Background="#374151"/>
-                                <Button Content="P3" Command="{Binding SelectModeCommand}" CommandParameter="3" Background="#374151"/>
-                                <Button Content="P4" Command="{Binding SelectModeCommand}" CommandParameter="4" Background="#374151"/>
-                                <Button Content="Custom" Command="{Binding SelectModeCommand}" CommandParameter="5" Background="#059669"/>
+                                <Button Content="P1 (Green)" Command="{Binding SelectModeCommand}" CommandParameter="1" Background="#374151" Padding="2,4" FontSize="11"/>
+                                <Button Content="P2 (Red)" Command="{Binding SelectModeCommand}" CommandParameter="2" Background="#374151" Padding="2,4" FontSize="11"/>
+                                <Button Content="P3 (Fish)" Command="{Binding SelectModeCommand}" CommandParameter="3" Background="#374151" Padding="2,4" FontSize="11"/>
+                                <Button Content="P4 (Coral)" Command="{Binding SelectModeCommand}" CommandParameter="4" Background="#374151" Padding="2,4" FontSize="11"/>
+                                <Button Content="Custom" Command="{Binding SelectModeCommand}" CommandParameter="5" Background="#059669" Padding="2,4" FontSize="11"/>
                             </UniformGrid>
 
                             <TextBlock Text="App Spectrum Presets (Quick Apply):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>

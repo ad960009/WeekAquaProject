@@ -21,11 +21,11 @@ namespace WeekAquaWPF.Protocol
         // Predefined App Preset Spectrum Ratios (RGBW Percentages)
         public static class Presets
         {
-            public static (double R, double G, double B, double W) GreenGrass => (80, 100, 40, 80);    // 녹색 수초 모드
-            public static (double R, double G, double B, double W) RedGrass   => (100, 30, 70, 80);    // 적색 수초 발색 모드
-            public static (double R, double G, double B, double W) FishMixed  => (70, 70, 70, 100);    // 어류/혼양 관상 모드
-            public static (double R, double G, double B, double W) CoralMarine => (10, 20, 100, 100);  // 산호/해수관상 모드
-            public static (double R, double G, double B, double W) AlgaeMax   => (100, 100, 100, 100); // 물잡이/이끼/최대출력 모드
+            public static (double R, double G, double B, double W) GreenGrass  => (75, 95, 38, 75);  // 녹색 수초 모드 (Total 96.6%)
+            public static (double R, double G, double B, double W) RedGrass    => (95, 30, 65, 75);  // 적색 수초 발색 모드 (Total 92.1%)
+            public static (double R, double G, double B, double W) FishMixed   => (70, 70, 70, 95);  // 어류/혼양 관상 모드 (Total 99.6%)
+            public static (double R, double G, double B, double W) CoralMarine => (10, 20, 95, 95);  // 산호/해수관상 모드 (Total 72.9%)
+            public static (double R, double G, double B, double W) AlgaeMax    => (70, 65, 70, 55);  // 최적 밸런스 피크 출력 모드 (Total 97.1%)
         }
 
         /// <summary>

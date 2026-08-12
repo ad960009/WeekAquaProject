@@ -332,17 +332,46 @@ namespace WeekAquaWPF.ViewModels
                 _ => (50, 50, 50, 50)
             };
 
+            // 1. Apply to Live Manual Spectrum Controls
             RedPercent = preset.R;
             GreenPercent = preset.G;
             BluePercent = preset.B;
             WhitePercent = preset.W;
+
+            // 2. Naturally scale preset color ratio across 12 Ramp Schedule Slots according to daily photoperiod intensity curve
+            double[] dailyIntensityCurve = new double[]
+            {
+                0.20, // Slot 1: 🌅 Sunrise Start
+                0.55, // Slot 2: 🌄 Morning Ramp Up
+                0.85, // Slot 3: ☀️ Late Morning
+                1.00, // Slot 4: ☀️ Noon Peak Sunlight
+                1.00, // Slot 5: ☀️ Afternoon Peak Sunlight
+                0.85, // Slot 6: 🌤️ Mid-Afternoon Ramp Down
+                0.65, // Slot 7: 🌇 Sunset Start
+                0.40, // Slot 8: 🌆 Golden Hour
+                0.25, // Slot 9: 🌆 Twilight Dusk
+                0.15, // Slot 10: 🌙 Moonlight Glow
+                0.05, // Slot 11: 🌌 Dim Night Slope
+                0.00  // Slot 12: 🌑 Total Darkness
+            };
+
+            for (int i = 0; i < RampSlots.Count && i < dailyIntensityCurve.Length; i++)
+            {
+                double factor = dailyIntensityCurve[i];
+                var slot = RampSlots[i];
+                slot.RedPercent = Math.Round(preset.R * factor, 1);
+                slot.GreenPercent = Math.Round(preset.G * factor, 1);
+                slot.BluePercent = Math.Round(preset.B * factor, 1);
+                slot.WhitePercent = Math.Round(preset.W * factor, 1);
+                slot.Validate();
+            }
 
             if (IsConnected)
             {
                 SendLiveSpectrum();
             }
 
-            AddLog(LogDirection.Info, $"Applied '{key}' preset spectrum (R:{preset.R}%, G:{preset.G}%, B:{preset.B}%, W:{preset.W}%).");
+            AddLog(LogDirection.Info, $"Applied '{key}' preset spectrum to Live control and 12 schedule slots naturally.");
             SaveCurrentDeviceConfig();
         }
 
