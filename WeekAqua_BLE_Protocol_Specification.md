@@ -147,13 +147,34 @@ public void onCharacteristicChanged(byte[] data) {
 
 ---
 
+## 6. 채널별 전력/전류 가중치 및 상한선 (Max Power Limit) 연산 공식
+
+WeekAqua 안드로이드 앱은 조명의 SMPS 전원 용량과 LED 발열 한계를 초과하지 않도록 **각 채널별 전력 가중치(Power Weights)**를 적용하여 총 전력량을 실시간 연산합니다. 슬라이더 조작 시 계산된 총 전력 백분율이 **$100.0\%$를 초과하면 조작을 차단**합니다.
+
+### (1) 표준 4채널 RGBW 시리즈 (`StringTools.java`)
+$$\text{Total Power (\%)} = (R\% \times 0.39) + (G\% \times 0.41) + (B\% \times 0.53) + (W\% \times 0.11)$$
+
+- **제한 조건**: $\text{Total Power (\%)} \le 100.0\%$
+- **채널별 전력 소비 비중**:
+  - **Blue (파랑)**: $53\%$ (가장 높은 전력 소비)
+  - **Green (초록)**: $41\%$
+  - **Red (빨강)**: $39\%$
+  - **White (흰색)**: $11\%$
+- **예시**: Red, Green, Blue를 모두 $100\%$로 설정할 경우 $39 + 41 + 53 = 133\% > 100\%$가 되어 제한(Maximum Tips)이 발생합니다.
+
+### (2) 6채널 멀티 스펙트럼 시리즈 (`StringTwoTools.java`)
+$$\text{Total Power (\%)} = (CH_1 \times 0.41) + (CH_2 \times 0.42) + (CH_3 \times 0.49) + (CH_4 \times 0.08) + (CH_5 \times 0.08) + (CH_6 \times 0.08)$$
+
+---
+
 ## 요약 명세 정리 표
 
 | 기능 구분 | Command Prefix | 데이터 바이트 매핑 예시 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **RTC 시간 동기화** | `FF` | `FF` + `HH` + `MM` + `SS` + `55555555` | 8 바이트 |
 | **라이브 스펙트럼 제어** | `FBF9` | `FBF9` + `RR` + `GG` + `BB` + `WW` + `5555` | $0\% \rightarrow \mathtt{00}, 100\% \rightarrow \mathtt{EB}$ |
+| **일출 & 일몰 타이머** | `FEF9` | `FEF9` + `StartH` + `StartM` + `EndH` + `EndM` + `01` + `RampIdx` | RampIdx: 0(0h)~5(2.5h) |
 | **쿨링팬 속도 설정** | `FC` | `FC` + `Speed` + `555555555555` | $0\% \rightarrow \mathtt{FC005555...}$ |
 | **Ramp 시간대 슬롯 $N$** | `FEF1` ~ `FEFC` | `FEF1` + `StartH` + `StartM` + `EndH` + `EndM` + `5555` | 슬롯 초기화 시 `0`으로 채움 |
-| **Ramp 스펙트럼 슬롯 $N$** | `FBF1` ~ `FBFC` | `FBF1` + `RR` + `GG` + `BB` + `WW` + `5555` | 각 슬롯별 500ms 딜레이 전송 |
+| **Ramp 스펙트럼 슬롯 $N$** | `FB1` ~ `FBFC` | `FBF1` + `RR` + `GG` + `BB` + `WW` + `5555` | 각 슬롯별 500ms 딜레이 전송 |
 | **기기 모드 전환** | `FDF1` ~ `FDF5` | `FDF1555555555555` | Preset/Custom Mode 전환 |
