@@ -260,7 +260,7 @@
                                 <Grid>
                                     <TextBlock Text="⚡ Total Weighted Power Load:" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center"/>
                                     <TextBlock HorizontalAlignment="Right" FontSize="11" FontWeight="Bold" VerticalAlignment="Center">
-                                        <Run Text="{Binding TotalPowerPercent, StringFormat='{}{0:0.0}%'}" Foreground="#F59E0B"/>
+                                        <Run Text="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" Foreground="#F59E0B"/>
                                         <Run Text="/ 100.0% Max" Foreground="#71717A"/>
                                     </TextBlock>
                                 </Grid>
@@ -468,15 +468,28 @@
                                   AlternatingRowBackground="#1F1F23" Foreground="#F4F4F5"
                                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#3F3F46"
                                   BorderThickness="0">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridCell">
+                                    <Style.Triggers>
+                                        <Trigger Property="Validation.HasError" Value="True">
+                                            <Setter Property="Background" Value="#7F1D1D"/>
+                                            <Setter Property="BorderBrush" Value="#EF4444"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Setter Property="ToolTip" Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Resources>
                             <DataGrid.Columns>
                                 <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsEnabled, Mode=TwoWay}" Width="50"/>
-                                <DataGridTextColumn Header="Point" Binding="{Binding PointId}" IsReadOnly="True" Width="50"/>
-                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTimeStr}" Width="80"/>
-                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTimeStr}" Width="80"/>
-                                <DataGridTextColumn Header="Red %" Binding="{Binding RedPercent, StringFormat='{}{0:0}'}" Width="60"/>
-                                <DataGridTextColumn Header="Green %" Binding="{Binding GreenPercent, StringFormat='{}{0:0}'}" Width="60"/>
-                                <DataGridTextColumn Header="Blue %" Binding="{Binding BluePercent, StringFormat='{}{0:0}'}" Width="60"/>
-                                <DataGridTextColumn Header="White %" Binding="{Binding WhitePercent, StringFormat='{}{0:0}'}" Width="60"/>
+                                <DataGridTextColumn Header="Point" Binding="{Binding PointId}" IsReadOnly="True" Width="45"/>
+                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTimeStr, Mode=TwoWay, ValidatesOnNotifyDataErrors=True}" Width="75"/>
+                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTimeStr, Mode=TwoWay, ValidatesOnNotifyDataErrors=True}" Width="75"/>
+                                <DataGridTextColumn Header="Red %" Binding="{Binding RedPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
+                                <DataGridTextColumn Header="Green %" Binding="{Binding GreenPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
+                                <DataGridTextColumn Header="Blue %" Binding="{Binding BluePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
+                                <DataGridTextColumn Header="White %" Binding="{Binding WhitePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
+                                <DataGridTextColumn Header="Total Power" Binding="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" IsReadOnly="True" Width="80"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

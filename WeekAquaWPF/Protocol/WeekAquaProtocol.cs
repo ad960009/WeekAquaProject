@@ -29,13 +29,38 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Calculates weighted total power percentage based on Android APK formula:
-        /// TotalPower% = (Red% * 0.39) + (Green% * 0.41) + (Blue% * 0.53) + (White% * 0.11) + (UV% * 0.08)
-        /// Note: Fan speed is excluded as cooling fans consume negligible LED channel power.
+        /// Calculates weighted total power percentage based on Android APK formula per device lineup series:
+        /// - 4-Channel (5746/5747): (R*0.39) + (G*0.41) + (B*0.53) + (W*0.11)
+        /// - 5-Channel (5748):       (R*0.41) + (G*0.42) + (B*0.49) + (W*0.08) + (UV*0.08)
+        /// - 6-Channel (5749):       (CH1*0.41) + (CH2*0.42) + (CH3*0.49) + (CH4*0.08) + (CH5*0.08) + (CH6*0.08)
+        /// - 7+ Channel (5750+):     ((CH1*0.29) + (CH2*0.69) + (CH3*0.73) + (CH4*0.10) + (CH5*0.82)) / 1.06
         /// </summary>
-        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent, double uvPercent = 0.0)
+        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent, double uvPercent = 0.0, string modelCode = "")
         {
-            double total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11) + (uvPercent * 0.08);
+            double total;
+            switch (modelCode)
+            {
+                case "5748": // 5-Channel Series (StringOneTools.java)
+                    total = (redPercent * 0.41) + (greenPercent * 0.42) + (bluePercent * 0.49) + (whitePercent * 0.08) + (uvPercent * 0.08);
+                    break;
+
+                case "5749": // 6-Channel Series (StringTwoTools.java)
+                    total = (redPercent * 0.41) + (greenPercent * 0.42) + (bluePercent * 0.49) + (whitePercent * 0.08) + (uvPercent * 0.08);
+                    break;
+
+                case "5750":
+                case "5751":
+                case "5752": // 7+ Channel Advanced Series (StringThreeTools.java)
+                    total = ((redPercent * 0.29) + (greenPercent * 0.69) + (bluePercent * 0.73) + (whitePercent * 0.10) + (uvPercent * 0.82)) / 1.06;
+                    break;
+
+                case "5746":
+                case "5747":
+                default: // Standard 4-Channel RGBW Series (StringTools.java)
+                    total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11) + (uvPercent * 0.08);
+                    break;
+            }
+
             return Math.Round(total, 1);
         }
 

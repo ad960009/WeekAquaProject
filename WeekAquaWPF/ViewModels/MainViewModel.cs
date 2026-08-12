@@ -44,6 +44,11 @@ namespace WeekAquaWPF.ViewModels
                 _selectedDevice = value;
                 OnPropertyChanged();
                 HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
+                string modelCode = _selectedDevice?.ModelCode ?? string.Empty;
+                foreach (var slot in RampSlots)
+                {
+                    slot.ModelCode = modelCode;
+                }
                 if (_selectedDevice != null)
                 {
                     LoadDeviceConfig(_selectedDevice.MacAddress);
@@ -81,7 +86,9 @@ namespace WeekAquaWPF.ViewModels
             set { _powerKwh = value; OnPropertyChanged(); }
         }
 
-        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent);
+        public string CurrentModelCode => SelectedDevice?.ModelCode ?? string.Empty;
+
+        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
 
         // Live Spectrum Colors with Max Power Limit (100%) Guard
         public double RedPercent
@@ -89,12 +96,11 @@ namespace WeekAquaWPF.ViewModels
             get => _redPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent, UvPercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
-                    double maxRed = (100.0 - (GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.39;
-                    _redPercent = Math.Max(0, Math.Min(100, maxRed));
-                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Red clamped to {_redPercent:F0}%.");
+                    _redPercent = Math.Max(0, _redPercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Red clamped for model [{CurrentModelCode}].");
                 }
                 else
                 {
@@ -112,12 +118,11 @@ namespace WeekAquaWPF.ViewModels
             get => _greenPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent, UvPercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
-                    double maxGreen = (100.0 - (RedPercent * 0.39 + BluePercent * 0.53 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.41;
-                    _greenPercent = Math.Max(0, Math.Min(100, maxGreen));
-                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Green clamped to {_greenPercent:F0}%.");
+                    _greenPercent = Math.Max(0, _greenPercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Green clamped for model [{CurrentModelCode}].");
                 }
                 else
                 {
@@ -135,12 +140,11 @@ namespace WeekAquaWPF.ViewModels
             get => _bluePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent, UvPercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent, UvPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
-                    double maxBlue = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.53;
-                    _bluePercent = Math.Max(0, Math.Min(100, maxBlue));
-                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Blue clamped to {_bluePercent:F0}%.");
+                    _bluePercent = Math.Max(0, _bluePercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Blue clamped for model [{CurrentModelCode}].");
                 }
                 else
                 {
@@ -158,12 +162,11 @@ namespace WeekAquaWPF.ViewModels
             get => _whitePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value, UvPercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value, UvPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
-                    double maxWhite = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53 + UvPercent * 0.08)) / 0.11;
-                    _whitePercent = Math.Max(0, Math.Min(100, maxWhite));
-                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). White clamped to {_whitePercent:F0}%.");
+                    _whitePercent = Math.Max(0, _whitePercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). White clamped for model [{CurrentModelCode}].");
                 }
                 else
                 {
@@ -181,12 +184,11 @@ namespace WeekAquaWPF.ViewModels
             get => _uvPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, value);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, value, CurrentModelCode);
                 if (total > 100.0)
                 {
-                    double maxUv = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.08;
-                    _uvPercent = Math.Max(0, Math.Min(100, maxUv));
-                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). UV clamped to {_uvPercent:F0}%.");
+                    _uvPercent = Math.Max(0, _uvPercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). UV clamped for model [{CurrentModelCode}].");
                 }
                 else
                 {
@@ -347,19 +349,40 @@ namespace WeekAquaWPF.ViewModels
         private void InitializeRampSlots()
         {
             RampSlots.Clear();
-            for (int i = 1; i <= 12; i++)
+
+            // Natural 12-slot Sunrise/Sunset Cycle (All slots strictly Total Power <= 100.0% max limit)
+            var defaultSlots = new (TimeSpan Start, TimeSpan End, double R, double G, double B, double W)[]
             {
-                RampSlots.Add(new RampPointSlot
+                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 0, 0),   20, 10, 15, 10), // 1: 🌅 Early Sunrise (20.9% Power)
+                (new TimeSpan(9, 0, 0),   new TimeSpan(10, 0, 0),  45, 35, 40, 30), // 2: 🌄 Morning Ramp Up (56.4% Power)
+                (new TimeSpan(10, 0, 0),  new TimeSpan(11, 30, 0), 65, 60, 65, 50), // 3: ☀️ Late Morning (89.9% Power)
+                (new TimeSpan(11, 30, 0), new TimeSpan(13, 30, 0), 70, 65, 70, 55), // 4: ☀️ Noon Peak Sunlight (97.1% Power)
+                (new TimeSpan(13, 30, 0), new TimeSpan(15, 30, 0), 70, 65, 70, 55), // 5: ☀️ Afternoon Peak (97.1% Power)
+                (new TimeSpan(15, 30, 0), new TimeSpan(17, 0, 0),  65, 60, 65, 50), // 6: 🌤️ Mid-Afternoon Ramp Down (89.9% Power)
+                (new TimeSpan(17, 0, 0),  new TimeSpan(18, 30, 0), 50, 40, 50, 35), // 7: 🌇 Sunset Start (66.3% Power)
+                (new TimeSpan(18, 30, 0), new TimeSpan(19, 30, 0), 40, 20, 30, 15), // 8: 🌆 Golden Hour (41.4% Power)
+                (new TimeSpan(19, 30, 0), new TimeSpan(20, 30, 0), 25, 10, 35, 5),  // 9: 🌆 Twilight Dusk (32.9% Power)
+                (new TimeSpan(20, 30, 0), new TimeSpan(21, 30, 0), 5,  0,  30, 0),  // 10: 🌙 Moonlight Glow (17.9% Power)
+                (new TimeSpan(21, 30, 0), new TimeSpan(22, 30, 0), 0,  0,  10, 0),  // 11: 🌌 Dim Night Slope (5.3% Power)
+                (new TimeSpan(22, 30, 0), new TimeSpan(23, 59, 0), 0,  0,  0,  0)   // 12: 🌑 Total Darkness (0.0% Power)
+            };
+
+            for (int i = 0; i < defaultSlots.Length; i++)
+            {
+                var s = defaultSlots[i];
+                var slot = new RampPointSlot
                 {
-                    PointId = i,
+                    PointId = i + 1,
                     IsEnabled = false, // All slots unchecked by default as requested
-                    StartTime = TimeSpan.FromHours(8 + (i - 1) * 2),
-                    EndTime = TimeSpan.FromHours(10 + (i - 1) * 2),
-                    RedPercent = 80,
-                    GreenPercent = 80,
-                    BluePercent = 80,
-                    WhitePercent = 80
-                });
+                    StartTime = s.Start,
+                    EndTime = s.End,
+                    RedPercent = s.R,
+                    GreenPercent = s.G,
+                    BluePercent = s.B,
+                    WhitePercent = s.W
+                };
+                slot.Validate();
+                RampSlots.Add(slot);
             }
         }
 
@@ -513,6 +536,20 @@ namespace WeekAquaWPF.ViewModels
 
         private void SyncAllRampSlots()
         {
+            // Option 3: Batch Validation Check before transmission
+            var invalidSlots = RampSlots.Where(s => s.HasErrors).ToList();
+            if (invalidSlots.Any())
+            {
+                var errorSummary = string.Join("\n", invalidSlots.Select(s => $"• Slot #{s.PointId}: {s.FirstErrorMessage}"));
+                AddLog(LogDirection.Error, $"Cannot send schedule! Validation errors found in {invalidSlots.Count} slot(s).");
+                System.Windows.MessageBox.Show(
+                    $"Cannot send schedule due to validation errors:\n\n{errorSummary}\n\nPlease correct the errors and try again.",
+                    "Schedule Validation Warning",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
             int enqueuedCount = 0;
             foreach (var slot in RampSlots)
             {
