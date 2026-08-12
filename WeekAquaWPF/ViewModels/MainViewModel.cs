@@ -81,7 +81,7 @@ namespace WeekAquaWPF.ViewModels
             set { _powerKwh = value; OnPropertyChanged(); }
         }
 
-        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent);
+        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent);
 
         // Live Spectrum Colors with Max Power Limit (100%) Guard
         public double RedPercent
@@ -89,11 +89,10 @@ namespace WeekAquaWPF.ViewModels
             get => _redPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent, UvPercent);
                 if (total > 100.0)
                 {
-                    // Clamp to max allowed value for Red
-                    double maxRed = (100.0 - (GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.39;
+                    double maxRed = (100.0 - (GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.39;
                     _redPercent = Math.Max(0, Math.Min(100, maxRed));
                     AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Red clamped to {_redPercent:F0}%.");
                 }
@@ -113,10 +112,10 @@ namespace WeekAquaWPF.ViewModels
             get => _greenPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent, UvPercent);
                 if (total > 100.0)
                 {
-                    double maxGreen = (100.0 - (RedPercent * 0.39 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.41;
+                    double maxGreen = (100.0 - (RedPercent * 0.39 + BluePercent * 0.53 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.41;
                     _greenPercent = Math.Max(0, Math.Min(100, maxGreen));
                     AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Green clamped to {_greenPercent:F0}%.");
                 }
@@ -136,10 +135,10 @@ namespace WeekAquaWPF.ViewModels
             get => _bluePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent, UvPercent);
                 if (total > 100.0)
                 {
-                    double maxBlue = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + WhitePercent * 0.11)) / 0.53;
+                    double maxBlue = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + WhitePercent * 0.11 + UvPercent * 0.08)) / 0.53;
                     _bluePercent = Math.Max(0, Math.Min(100, maxBlue));
                     AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Blue clamped to {_bluePercent:F0}%.");
                 }
@@ -159,10 +158,10 @@ namespace WeekAquaWPF.ViewModels
             get => _whitePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value, UvPercent);
                 if (total > 100.0)
                 {
-                    double maxWhite = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53)) / 0.11;
+                    double maxWhite = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53 + UvPercent * 0.08)) / 0.11;
                     _whitePercent = Math.Max(0, Math.Min(100, maxWhite));
                     AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). White clamped to {_whitePercent:F0}%.");
                 }
@@ -182,7 +181,17 @@ namespace WeekAquaWPF.ViewModels
             get => _uvPercent;
             set
             {
-                _uvPercent = value;
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, value);
+                if (total > 100.0)
+                {
+                    double maxUv = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.08;
+                    _uvPercent = Math.Max(0, Math.Min(100, maxUv));
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). UV clamped to {_uvPercent:F0}%.");
+                }
+                else
+                {
+                    _uvPercent = value;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(UvByte));
                 OnPropertyChanged(nameof(TotalPowerPercent));

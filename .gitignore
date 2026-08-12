@@ -36,3 +36,5 @@ ehthumbs.db
 Desktop.ini
 .idea/
 .vscode/
+.agents/
+.agent/

@@ -30,11 +30,12 @@ namespace WeekAquaWPF.Protocol
 
         /// <summary>
         /// Calculates weighted total power percentage based on Android APK formula:
-        /// TotalPower% = (Red% * 0.39) + (Green% * 0.41) + (Blue% * 0.53) + (White% * 0.11)
+        /// TotalPower% = (Red% * 0.39) + (Green% * 0.41) + (Blue% * 0.53) + (White% * 0.11) + (UV% * 0.08)
+        /// Note: Fan speed is excluded as cooling fans consume negligible LED channel power.
         /// </summary>
-        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent)
+        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent, double uvPercent = 0.0)
         {
-            double total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11);
+            double total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11) + (uvPercent * 0.08);
             return Math.Round(total, 1);
         }
 
