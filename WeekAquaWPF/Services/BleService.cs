@@ -89,19 +89,20 @@ namespace WeekAquaWPF.Services
 
                 string hex = BitConverter.ToString(rawBytes.ToArray()).Replace("-", "").ToUpperInvariant();
 
-                // Reverse-Engineered Android Model Code Check (5748, 5749, 574A)
-                if (hex.Contains("5748") || hex.Contains("5749") || hex.Contains("574A"))
+                // Reverse-Engineered Official Android Model Code Check (5745 ~ 5752)
+                string[] targetCodes = new[] { "5752", "5751", "5750", "5749", "5748", "5747", "5746", "5745" };
+                foreach (var code in targetCodes)
+                {
+                    if (hex.Contains(code))
+                    {
+                        modelCode = code;
+                        break;
+                    }
+                }
+
+                if (modelCode == "5748" || modelCode == "5749" || modelCode == "5750" || modelCode == "5751" || modelCode == "5752")
                 {
                     hasUvChannel = true;
-                    modelCode = hex.Contains("5748") ? "5748" : (hex.Contains("5749") ? "5749" : "574A");
-                }
-                else if (hex.Contains("5746"))
-                {
-                    modelCode = "5746";
-                }
-                else if (hex.Contains("5747"))
-                {
-                    modelCode = "5747";
                 }
             }
             catch { }
@@ -113,6 +114,7 @@ namespace WeekAquaWPF.Services
                 if (upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("_M90") || upperName.Contains("_T90"))
                 {
                     hasUvChannel = true;
+                    if (string.IsNullOrEmpty(modelCode)) modelCode = "5748";
                 }
             }
 
