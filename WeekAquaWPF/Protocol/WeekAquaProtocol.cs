@@ -113,6 +113,23 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
+        /// Builds the dedicated Sunrise & Sunset timer packet (0xFEF9 + StartH + StartM + EndH + EndM + Type + RampIndex).
+        /// RampIndex: 0 (0h), 1 (0.5h), 2 (1h), 3 (1.5h), 4 (2h), 5 (2.5h).
+        /// Total length: 8 Bytes.
+        /// </summary>
+        public static byte[] BuildSunriseSunsetPacket(byte startH, byte startM, byte endH, byte endM, byte rampIndex, bool enabled = true)
+        {
+            return new byte[]
+            {
+                0xFE, 0xF9,
+                startH, startM,
+                endH, endM,
+                (byte)(enabled ? 0x01 : 0x00),
+                (byte)Math.Clamp(rampIndex, (byte)0, (byte)5)
+            };
+        }
+
+        /// <summary>
         /// Builds the Ramp-up/down schedule slot time packet (0xFEF[Point] + StartH + StartM + EndH + EndM + 5555).
         /// Point ID: 1 to 12.
         /// Total length: 8 Bytes.

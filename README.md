@@ -10,7 +10,10 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스의 BLE(Blu
 
 ## 📂 프로젝트 구성
 
-- 📘 **[WeekAqua_BLE_Protocol_Specification.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 앱 분석 기반 완벽 프로토콜 명세서 (UUID, 패킷 구조, 스펙트럼 인코딩 공식, 스케줄링 큐 딜레이, 전력 파싱 연산)
+- 🌅 **일출 & 일몰 모드 제어 (Sunrise & Sunset Timer Mode)**: 시작/종료 시각 및 0h~2.5h Ramp 시간 간격 선택 및 패킷(`FEF9`) 즉시 전송
+- 💾 **기기별 JSON 설정 자동 저장/로드**: 기기 MAC 주소별 설정값(RGBW, 팬, 일출일몰, 스케줄)을 로컬 JSON(`device_config.json`)으로 영구 보관
+- 🎨 **고대비 다크 테마 UI**: DataGrid 헤더 및 ComboBox 가독성을 최적화한 현대적인 UI 스타일링
+- 📄 **Reverse-Engineered Protocol Spec**: 안드로이드 APK 분석 기반 BLE 통신 명세서 보유 (`WeekAqua_BLE_Protocol_Specification.md`)
 - 💻 **[WeekAquaWPF/](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/)**: .NET WPF C# 기반 Windows 전용 조명/플러그 제어 애플리케이션
   - 자세한 애플리케이션 가이드는 [WeekAquaWPF/README.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/README.md) 참조
 

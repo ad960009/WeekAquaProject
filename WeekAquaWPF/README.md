@@ -35,7 +35,11 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 제어�
    - Notify 특성을 통해 전달되는 누적 전력 사용량(kWh) 파싱 및 라이브 표출
 
 7. **Raw BLE 통신 터미널 로그**
-   - 송신(TX), 수신(RX), 시스템 안내(INFO), 에러(ERROR) 프레임 실시간 헥스(Hex) 로그 표출
+- 🌅 **일출 & 일몰 모드 제어 (Sunrise & Sunset Timer Mode)**: 시작/종료 시각 및 0h, 0.5h, 1h, 1.5h, 2h, 2.5h Ramp 시간 선택 후 `FEF9` 패킷 송신
+- 💾 **기기별 JSON 설정 자동 저장/로드**: 기기 MAC 주소별 설정값(RGBW, 팬 속도, 일출일몰, 스케줄)을 `%AppData%\WeekAquaWPF\device_config.json`에 자동 보관
+- 📅 **12-Point Ramp-up/down Scheduler**: 하루 12개 시간 슬롯별 RGBW 스펙트럼 시분할 자동 제어 (`FEF1`~`FEFC`, `FBF1`~`FBFC`)
+- 🕒 **스마트폰/PC RTC 시계 동기화**: 현지 시각(`0xFF`) 자동 동기화 기능
+- 🎨 **고대비 다크 테마 UI**: DataGrid 헤더 및 ComboBox 가독성을 대폭 향상시킨 커스텀 스타일링 적용
 
 ---
 

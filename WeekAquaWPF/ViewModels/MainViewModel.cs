@@ -25,7 +25,9 @@ namespace WeekAquaWPF.ViewModels
         private double _bluePercent = 50;
         private double _whitePercent = 50;
         private double _fanSpeedPercent = 50;
-        private bool _autoSendLiveSpectrum = true;
+        private bool _autoSendLiveSpectrum = false; // Default unchecked
+
+        private AppSettingsData _appSettings;
 
         public ObservableCollection<BleDeviceInfo> DiscoveredDevices { get; } = new ObservableCollection<BleDeviceInfo>();
         public ObservableCollection<LogEntry> LogEntries { get; } = new ObservableCollection<LogEntry>();
@@ -34,7 +36,15 @@ namespace WeekAquaWPF.ViewModels
         public BleDeviceInfo? SelectedDevice
         {
             get => _selectedDevice;
-            set { _selectedDevice = value; OnPropertyChanged(); }
+            set
+            {
+                _selectedDevice = value;
+                OnPropertyChanged();
+                if (_selectedDevice != null)
+                {
+                    LoadDeviceConfig(_selectedDevice.MacAddress);
+                }
+            }
         }
 
         public bool IsScanning
@@ -134,6 +144,41 @@ namespace WeekAquaWPF.ViewModels
         public byte WhiteByte => WeekAquaProtocol.PercentToByte(WhitePercent);
         public byte FanByte => WeekAquaProtocol.PercentToByte(FanSpeedPercent);
 
+        // Sunrise & Sunset Mode Properties
+        private TimeSpan _sunriseStartTime = new TimeSpan(8, 0, 0);
+        private TimeSpan _sunriseEndTime = new TimeSpan(18, 0, 0);
+        private int _sunriseRampIndex = 2; // Default 1h (Index 2)
+
+        public TimeSpan SunriseStartTime
+        {
+            get => _sunriseStartTime;
+            set { _sunriseStartTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(SunriseStartStr)); }
+        }
+
+        public TimeSpan SunriseEndTime
+        {
+            get => _sunriseEndTime;
+            set { _sunriseEndTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(SunriseEndStr)); }
+        }
+
+        public string SunriseStartStr
+        {
+            get => _sunriseStartTime.ToString(@"hh\:mm");
+            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) SunriseStartTime = ts; }
+        }
+
+        public string SunriseEndStr
+        {
+            get => _sunriseEndTime.ToString(@"hh\:mm");
+            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) SunriseEndTime = ts; }
+        }
+
+        public int SunriseRampIndex
+        {
+            get => _sunriseRampIndex;
+            set { _sunriseRampIndex = value; OnPropertyChanged(); }
+        }
+
         // Commands
         public ICommand ScanCommand { get; }
         public ICommand ConnectCommand { get; }
@@ -143,6 +188,7 @@ namespace WeekAquaWPF.ViewModels
         public ICommand SyncRtcTimeCommand { get; }
         public ICommand SelectModeCommand { get; }
         public ICommand ApplyPresetSpectrumCommand { get; }
+        public ICommand SendSunriseSunsetCommand { get; }
         public ICommand SyncAllRampSlotsCommand { get; }
         public ICommand ClearLogCommand { get; }
 
@@ -162,10 +208,31 @@ namespace WeekAquaWPF.ViewModels
             SyncRtcTimeCommand = new RelayCommand(SyncRtcTime);
             SelectModeCommand = new RelayCommand(param => SelectMode(param));
             ApplyPresetSpectrumCommand = new RelayCommand(param => ApplyPresetSpectrum(param));
+            SendSunriseSunsetCommand = new RelayCommand(SendSunriseSunset);
             SyncAllRampSlotsCommand = new RelayCommand(SyncAllRampSlots);
             ClearLogCommand = new RelayCommand(ClearLog);
 
+            _appSettings = SettingsManager.LoadSettings();
+
             InitializeRampSlots();
+        }
+
+        private void SendSunriseSunset()
+        {
+            byte[] packet = WeekAquaProtocol.BuildSunriseSunsetPacket(
+                (byte)SunriseStartTime.Hours,
+                (byte)SunriseStartTime.Minutes,
+                (byte)SunriseEndTime.Hours,
+                (byte)SunriseEndTime.Minutes,
+                (byte)SunriseRampIndex,
+                enabled: true
+            );
+
+            _bleService.EnqueueWritePacket(packet);
+            string[] rampLabels = { "0h", "0.5h", "1h", "1.5h", "2h", "2.5h" };
+            string label = SunriseRampIndex >= 0 && SunriseRampIndex < rampLabels.Length ? rampLabels[SunriseRampIndex] : $"{SunriseRampIndex}";
+            AddLog(LogDirection.Info, $"Enqueued Sunrise/Sunset packet ({SunriseStartStr} ~ {SunriseEndStr}, Ramp: {label}).");
+            SaveCurrentDeviceConfig();
         }
 
         private void ApplyPresetSpectrum(object? presetName)
@@ -193,16 +260,18 @@ namespace WeekAquaWPF.ViewModels
             }
 
             AddLog(LogDirection.Info, $"Applied '{key}' preset spectrum (R:{preset.R}%, G:{preset.G}%, B:{preset.B}%, W:{preset.W}%).");
+            SaveCurrentDeviceConfig();
         }
 
         private void InitializeRampSlots()
         {
+            RampSlots.Clear();
             for (int i = 1; i <= 12; i++)
             {
                 RampSlots.Add(new RampPointSlot
                 {
                     PointId = i,
-                    IsEnabled = i <= 4, // Default first 4 slots active
+                    IsEnabled = false, // All slots unchecked by default as requested
                     StartTime = TimeSpan.FromHours(8 + (i - 1) * 2),
                     EndTime = TimeSpan.FromHours(10 + (i - 1) * 2),
                     RedPercent = 80,
@@ -211,6 +280,97 @@ namespace WeekAquaWPF.ViewModels
                     WhitePercent = 80
                 });
             }
+        }
+
+        public void LoadDeviceConfig(string macAddress)
+        {
+            if (string.IsNullOrWhiteSpace(macAddress)) return;
+
+            if (_appSettings.Devices.TryGetValue(macAddress, out var config))
+            {
+                _redPercent = config.RedPercent;
+                _greenPercent = config.GreenPercent;
+                _bluePercent = config.BluePercent;
+                _whitePercent = config.WhitePercent;
+                _fanSpeedPercent = config.FanSpeedPercent;
+                _autoSendLiveSpectrum = config.AutoSendLiveSpectrum;
+                SunriseStartStr = config.SunriseStartStr;
+                SunriseEndStr = config.SunriseEndStr;
+                SunriseRampIndex = config.SunriseRampIndex;
+
+                OnPropertyChanged(nameof(RedPercent));
+                OnPropertyChanged(nameof(GreenPercent));
+                OnPropertyChanged(nameof(BluePercent));
+                OnPropertyChanged(nameof(WhitePercent));
+                OnPropertyChanged(nameof(FanSpeedPercent));
+                OnPropertyChanged(nameof(AutoSendLiveSpectrum));
+                OnPropertyChanged(nameof(RedByte));
+                OnPropertyChanged(nameof(GreenByte));
+                OnPropertyChanged(nameof(BlueByte));
+                OnPropertyChanged(nameof(WhiteByte));
+                OnPropertyChanged(nameof(FanByte));
+
+                if (config.RampSlots != null && config.RampSlots.Count > 0)
+                {
+                    foreach (var slotConfig in config.RampSlots)
+                    {
+                        var target = RampSlots.FirstOrDefault(s => s.PointId == slotConfig.PointId);
+                        if (target != null)
+                        {
+                            target.IsEnabled = slotConfig.IsEnabled;
+                            target.StartTimeStr = slotConfig.StartTimeStr;
+                            target.EndTimeStr = slotConfig.EndTimeStr;
+                            target.RedPercent = slotConfig.RedPercent;
+                            target.GreenPercent = slotConfig.GreenPercent;
+                            target.BluePercent = slotConfig.BluePercent;
+                            target.WhitePercent = slotConfig.WhitePercent;
+                        }
+                    }
+                }
+
+                AddLog(LogDirection.Info, $"Loaded saved JSON settings for device [{macAddress}].");
+            }
+        }
+
+        public void SaveCurrentDeviceConfig()
+        {
+            if (SelectedDevice == null || string.IsNullOrWhiteSpace(SelectedDevice.MacAddress)) return;
+
+            var config = new DeviceConfig
+            {
+                MacAddress = SelectedDevice.MacAddress,
+                DeviceName = SelectedDevice.Name,
+                RedPercent = RedPercent,
+                GreenPercent = GreenPercent,
+                BluePercent = BluePercent,
+                WhitePercent = WhitePercent,
+                FanSpeedPercent = FanSpeedPercent,
+                AutoSendLiveSpectrum = AutoSendLiveSpectrum,
+                SunriseStartStr = SunriseStartStr,
+                SunriseEndStr = SunriseEndStr,
+                SunriseRampIndex = SunriseRampIndex
+            };
+
+            foreach (var slot in RampSlots)
+            {
+                config.RampSlots.Add(new SlotConfig
+                {
+                    PointId = slot.PointId,
+                    IsEnabled = slot.IsEnabled,
+                    StartTimeStr = slot.StartTimeStr,
+                    EndTimeStr = slot.EndTimeStr,
+                    RedPercent = slot.RedPercent,
+                    GreenPercent = slot.GreenPercent,
+                    BluePercent = slot.BluePercent,
+                    WhitePercent = slot.WhitePercent
+                });
+            }
+
+            _appSettings.Devices[SelectedDevice.MacAddress] = config;
+            _appSettings.LastConnectedMac = SelectedDevice.MacAddress;
+            SettingsManager.SaveSettings(_appSettings);
+
+            AddLog(LogDirection.Info, $"Saved settings to JSON for device [{SelectedDevice.MacAddress}].");
         }
 
         private void StartScan()

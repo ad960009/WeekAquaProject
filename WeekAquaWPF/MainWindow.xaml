@@ -58,6 +58,106 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- DataGrid Header & Cell Dark Style -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#18181B"/>
+            <Setter Property="Foreground" Value="#A78BFA"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="8,8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="#F4F4F5"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="TextBlock.TextAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#3B82F6"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ComboBox Dark Style -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#18181B"/>
+            <Setter Property="Foreground" Value="#F4F4F5"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="templateFrame"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="4"
+                                                Padding="8,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Grid.Column="0" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center"/>
+                                                <Path Grid.Column="1" Data="M 0 0 L 4 4 L 8 0 Z" Fill="#A1A1AA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="templateFrame" Property="BorderBrush" Value="#3B82F6"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              Margin="10,0,30,0" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                <Grid Name="DropDown" SnapsToDevicePixels="True" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder" Background="#18181B" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="4" Margin="0,4,0,0"/>
+                                    <ScrollViewer Margin="4,6" SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox Dark Item Style -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#18181B"/>
+            <Setter Property="Foreground" Value="#F4F4F5"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3B82F6"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2563EB"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="16">
@@ -258,6 +358,40 @@
                                 <Button Content="🪸 Coral/Marine" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralMarine" Background="#5B21B6" Margin="0,0,4,4"/>
                                 <Button Content="💥 Cycling Max" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="AlgaeMax" Background="#9A3412" Margin="0,0,4,4"/>
                             </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. Sunrise & Sunset Timer Card (FEF9) -->
+                    <Border Style="{StaticResource CardPanel}">
+                        <StackPanel>
+                            <TextBlock Text="🌅 Sunrise &amp; Sunset Timer Mode (FEF9)" FontSize="16" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,12"/>
+                            
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="Start Time (On):" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding SunriseStartStr, Mode=TwoWay}" Padding="6,4" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Text="End Time (Off):" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding SunriseEndStr, Mode=TwoWay}" Padding="6,4" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Ramp Up/Down Duration:" FontSize="11" Foreground="#A1A1AA" Margin="0,4,0,4"/>
+                            <ComboBox SelectedIndex="{Binding SunriseRampIndex, Mode=TwoWay}" Background="#18181B" Foreground="#F4F4F5" Margin="0,0,0,8">
+                                <ComboBoxItem Content="0 h (Immediate On/Off)"/>
+                                <ComboBoxItem Content="0.5 h (30 mins Slope)"/>
+                                <ComboBoxItem Content="1 h (60 mins Slope)"/>
+                                <ComboBoxItem Content="1.5 h (90 mins Slope)"/>
+                                <ComboBoxItem Content="2 h (120 mins Slope)"/>
+                                <ComboBoxItem Content="2.5 h (150 mins Slope)"/>
+                            </ComboBox>
+
+                            <Button Content="🌅 Apply Sunrise &amp; Sunset Timer" Command="{Binding SendSunriseSunsetCommand}" Background="#D97706" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
 
