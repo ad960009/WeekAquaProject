@@ -73,13 +73,57 @@ namespace WeekAquaWPF.Services
             string name = args.Advertisement.LocalName;
             string macStr = FormatMacAddress(args.BluetoothAddress);
 
-            // Filter for WeekAqua or relevant devices if local name matches or show all non-empty names
+            string modelCode = string.Empty;
+            bool hasUvChannel = false;
+
+            try
+            {
+                var rawBytes = new List<byte>();
+                foreach (var section in args.Advertisement.DataSections)
+                {
+                    var reader = Windows.Storage.Streams.DataReader.FromBuffer(section.Data);
+                    byte[] bytes = new byte[section.Data.Length];
+                    reader.ReadBytes(bytes);
+                    rawBytes.AddRange(bytes);
+                }
+
+                string hex = BitConverter.ToString(rawBytes.ToArray()).Replace("-", "").ToUpperInvariant();
+
+                // Reverse-Engineered Android Model Code Check (5748, 5749, 574A)
+                if (hex.Contains("5748") || hex.Contains("5749") || hex.Contains("574A"))
+                {
+                    hasUvChannel = true;
+                    modelCode = hex.Contains("5748") ? "5748" : (hex.Contains("5749") ? "5749" : "574A");
+                }
+                else if (hex.Contains("5746"))
+                {
+                    modelCode = "5746";
+                }
+                else if (hex.Contains("5747"))
+                {
+                    modelCode = "5747";
+                }
+            }
+            catch { }
+
+            // Name fallback check
+            if (!hasUvChannel && !string.IsNullOrWhiteSpace(name))
+            {
+                string upperName = name.ToUpperInvariant();
+                if (upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("_M90") || upperName.Contains("_T90"))
+                {
+                    hasUvChannel = true;
+                }
+            }
+
             var deviceInfo = new BleDeviceInfo
             {
                 Name = string.IsNullOrWhiteSpace(name) ? "Unknown BLE Device" : name,
                 BluetoothAddress = args.BluetoothAddress,
                 MacAddress = macStr,
-                Rssi = args.RawSignalStrengthInDBm
+                Rssi = args.RawSignalStrengthInDBm,
+                ModelCode = modelCode,
+                HasUvChannel = hasUvChannel
             };
 
             DeviceDiscovered?.Invoke(deviceInfo);

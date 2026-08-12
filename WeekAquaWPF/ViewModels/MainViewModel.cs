@@ -27,6 +27,9 @@ namespace WeekAquaWPF.ViewModels
         private double _fanSpeedPercent = 50;
         private bool _autoSendLiveSpectrum = false; // Default unchecked
 
+        private double _uvPercent = 0;
+        private bool _hasUvChannel = false;
+
         private AppSettingsData _appSettings;
 
         public ObservableCollection<BleDeviceInfo> DiscoveredDevices { get; } = new ObservableCollection<BleDeviceInfo>();
@@ -40,11 +43,18 @@ namespace WeekAquaWPF.ViewModels
             {
                 _selectedDevice = value;
                 OnPropertyChanged();
+                HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
                 if (_selectedDevice != null)
                 {
                     LoadDeviceConfig(_selectedDevice.MacAddress);
                 }
             }
+        }
+
+        public bool HasUvChannel
+        {
+            get => _hasUvChannel;
+            set { _hasUvChannel = value; OnPropertyChanged(); }
         }
 
         public bool IsScanning
@@ -166,6 +176,21 @@ namespace WeekAquaWPF.ViewModels
                 OnSpectrumChanged();
             }
         }
+
+        public double UvPercent
+        {
+            get => _uvPercent;
+            set
+            {
+                _uvPercent = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(UvByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                OnSpectrumChanged();
+            }
+        }
+
+        public byte UvByte => WeekAquaProtocol.PercentToByte(UvPercent);
 
         public double FanSpeedPercent
         {

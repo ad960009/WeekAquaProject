@@ -311,18 +311,35 @@
                                 </TextBlock>
                             </Grid>
 
-                            <!-- White / UV Channel -->
+                            <!-- White Channel -->
                             <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="60"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="70"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="White/UV" Foreground="#F59E0B" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <TextBlock Text="White" Foreground="#F59E0B" FontWeight="Bold" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding WhitePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
                                     <Run Text="{Binding WhitePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
                                     <Run Text="{Binding WhiteByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- UV / UVA Channel (Enabled if detected on 5/6-ch models: 5748/5749/574A) -->
+                            <Grid Margin="0,4" IsEnabled="{Binding HasUvChannel}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="UV/UVA" Foreground="#C084FC" FontWeight="Bold"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding UvPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding UvPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding UvByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
                                 </TextBlock>
                             </Grid>
 
