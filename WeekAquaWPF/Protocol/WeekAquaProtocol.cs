@@ -29,6 +29,16 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
+        /// Calculates weighted total power percentage based on Android APK formula:
+        /// TotalPower% = (Red% * 0.39) + (Green% * 0.41) + (Blue% * 0.53) + (White% * 0.11)
+        /// </summary>
+        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent)
+        {
+            double total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11);
+            return Math.Round(total, 1);
+        }
+
+        /// <summary>
         /// Converts percentage (0% - 100%) to raw byte value (0 - 235).
         /// </summary>
         public static byte PercentToByte(double percent)

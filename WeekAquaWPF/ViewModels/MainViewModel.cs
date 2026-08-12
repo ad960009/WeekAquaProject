@@ -71,15 +71,29 @@ namespace WeekAquaWPF.ViewModels
             set { _powerKwh = value; OnPropertyChanged(); }
         }
 
-        // Live Spectrum Colors
+        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent);
+
+        // Live Spectrum Colors with Max Power Limit (100%) Guard
         public double RedPercent
         {
             get => _redPercent;
             set
             {
-                _redPercent = value;
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent);
+                if (total > 100.0)
+                {
+                    // Clamp to max allowed value for Red
+                    double maxRed = (100.0 - (GreenPercent * 0.41 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.39;
+                    _redPercent = Math.Max(0, Math.Min(100, maxRed));
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Red clamped to {_redPercent:F0}%.");
+                }
+                else
+                {
+                    _redPercent = value;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(RedByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
                 OnSpectrumChanged();
             }
         }
@@ -89,9 +103,20 @@ namespace WeekAquaWPF.ViewModels
             get => _greenPercent;
             set
             {
-                _greenPercent = value;
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent);
+                if (total > 100.0)
+                {
+                    double maxGreen = (100.0 - (RedPercent * 0.39 + BluePercent * 0.53 + WhitePercent * 0.11)) / 0.41;
+                    _greenPercent = Math.Max(0, Math.Min(100, maxGreen));
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Green clamped to {_greenPercent:F0}%.");
+                }
+                else
+                {
+                    _greenPercent = value;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(GreenByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
                 OnSpectrumChanged();
             }
         }
@@ -101,9 +126,20 @@ namespace WeekAquaWPF.ViewModels
             get => _bluePercent;
             set
             {
-                _bluePercent = value;
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent);
+                if (total > 100.0)
+                {
+                    double maxBlue = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + WhitePercent * 0.11)) / 0.53;
+                    _bluePercent = Math.Max(0, Math.Min(100, maxBlue));
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Blue clamped to {_bluePercent:F0}%.");
+                }
+                else
+                {
+                    _bluePercent = value;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BlueByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
                 OnSpectrumChanged();
             }
         }
@@ -113,9 +149,20 @@ namespace WeekAquaWPF.ViewModels
             get => _whitePercent;
             set
             {
-                _whitePercent = value;
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value);
+                if (total > 100.0)
+                {
+                    double maxWhite = (100.0 - (RedPercent * 0.39 + GreenPercent * 0.41 + BluePercent * 0.53)) / 0.11;
+                    _whitePercent = Math.Max(0, Math.Min(100, maxWhite));
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). White clamped to {_whitePercent:F0}%.");
+                }
+                else
+                {
+                    _whitePercent = value;
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(WhiteByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
                 OnSpectrumChanged();
             }
         }

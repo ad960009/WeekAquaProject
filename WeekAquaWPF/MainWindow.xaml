@@ -255,6 +255,17 @@
                                 <CheckBox Content="Auto-Send" IsChecked="{Binding AutoSendLiveSpectrum}" Foreground="#A1A1AA" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
 
+                            <!-- Weighted Total Power Load Meter -->
+                            <Border Background="#18181B" CornerRadius="4" Padding="8,4" Margin="0,0,0,8" BorderBrush="#3F3F46" BorderThickness="1">
+                                <Grid>
+                                    <TextBlock Text="⚡ Total Weighted Power Load:" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                                    <TextBlock HorizontalAlignment="Right" FontSize="11" FontWeight="Bold" VerticalAlignment="Center">
+                                        <Run Text="{Binding TotalPowerPercent, StringFormat='{}{0:0.0}%'}" Foreground="#F59E0B"/>
+                                        <Run Text="/ 100.0% Max" Foreground="#71717A"/>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
                             <!-- Red Channel -->
                             <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>

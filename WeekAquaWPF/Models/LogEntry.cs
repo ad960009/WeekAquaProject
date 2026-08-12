@@ -7,6 +7,7 @@ namespace WeekAquaWPF.Models
         TX,
         RX,
         Info,
+        Warning,
         Error
     }
 
