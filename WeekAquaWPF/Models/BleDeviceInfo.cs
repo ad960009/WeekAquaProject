@@ -11,6 +11,11 @@ namespace WeekAquaWPF.Models
 
         public string ModelCode { get; set; } = string.Empty;
         public bool HasUvChannel { get; set; } = false;
+        public bool Has6Channel => ModelCode switch
+        {
+            "5749" or "5750" or "5751" or "5752" => true,
+            _ => Name.Contains("6CH") || Name.Contains("10CH")
+        };
 
         public string ChannelTypeDescription => ModelCode switch
         {

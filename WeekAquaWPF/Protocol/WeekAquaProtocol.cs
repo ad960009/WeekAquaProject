@@ -18,14 +18,18 @@ namespace WeekAquaWPF.Protocol
         // Scaling constant for Smart Plug kWh calculation
         public const double POWER_KWH_SCALE = 4.6566128730773926E-8d;
 
-        // Predefined App Preset Spectrum Ratios (RGBW Percentages)
+        // Predefined App Preset Spectrum Ratios (RGBW + UV + Violet Percentages)
         public static class Presets
         {
-            public static (double R, double G, double B, double W) GreenGrass  => (75, 95, 38, 75);  // 녹색 수초 모드 (Total 96.6%)
-            public static (double R, double G, double B, double W) RedGrass    => (95, 30, 65, 75);  // 적색 수초 발색 모드 (Total 92.1%)
-            public static (double R, double G, double B, double W) FishMixed   => (70, 70, 70, 95);  // 어류/혼양 관상 모드 (Total 99.6%)
-            public static (double R, double G, double B, double W) CoralMarine => (10, 20, 95, 95);  // 산호/해수관상 모드 (Total 72.9%)
-            public static (double R, double G, double B, double W) AlgaeMax    => (70, 65, 70, 55);  // 최적 밸런스 피크 출력 모드 (Total 97.1%)
+            public static (double R, double G, double B, double W, double UV, double V) GreenGrass  => (75, 95, 38, 75, 10, 5); // 녹색 수초 모드
+            public static (double R, double G, double B, double W, double UV, double V) RedGrass    => (95, 30, 65, 75, 15, 10); // 적색 수초 발색 모드
+            public static (double R, double G, double B, double W, double UV, double V) FishMixed   => (70, 70, 70, 95, 5, 5);  // 어류/혼양 관상 모드
+            public static (double R, double G, double B, double W, double UV, double V) CoralMarine => (10, 20, 95, 95, 60, 40); // 산호/해수 기본 모드
+            public static (double R, double G, double B, double W, double UV, double V) CoralLps    => (15, 25, 90, 70, 50, 60); // LPS 연산호 특화 모드
+            public static (double R, double G, double B, double W, double UV, double V) CoralSps    => (5, 15, 100, 60, 75, 85); // SPS 경산호 특화 모드
+            public static (double R, double G, double B, double W, double UV, double V) CoralAb     => (10, 20, 100, 40, 80, 90); // Coral AB+ 형광 스펙트럼 모드
+            public static (double R, double G, double B, double W, double UV, double V) MarineFot   => (50, 50, 85, 90, 25, 30); // FOT 해수어 관상 모드
+            public static (double R, double G, double B, double W, double UV, double V) AlgaeMax    => (70, 65, 70, 55, 20, 15); // 최적 밸런스 피크 출력 모드
         }
 
         /// <summary>
@@ -35,7 +39,7 @@ namespace WeekAquaWPF.Protocol
         /// - 6-Channel (5749):       (CH1*0.41) + (CH2*0.42) + (CH3*0.49) + (CH4*0.08) + (CH5*0.08) + (CH6*0.08)
         /// - 7+ Channel (5750+):     ((CH1*0.29) + (CH2*0.69) + (CH3*0.73) + (CH4*0.10) + (CH5*0.82)) / 1.06
         /// </summary>
-        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent, double uvPercent = 0.0, string modelCode = "")
+        public static double CalculateTotalPowerPercent(double redPercent, double greenPercent, double bluePercent, double whitePercent, double uvPercent = 0.0, double violetPercent = 0.0, string modelCode = "")
         {
             double total;
             switch (modelCode)
@@ -45,23 +49,54 @@ namespace WeekAquaWPF.Protocol
                     break;
 
                 case "5749": // 6-Channel Series (StringTwoTools.java)
-                    total = (redPercent * 0.41) + (greenPercent * 0.42) + (bluePercent * 0.49) + (whitePercent * 0.08) + (uvPercent * 0.08);
+                    total = (redPercent * 0.41) + (greenPercent * 0.42) + (bluePercent * 0.49) + (whitePercent * 0.08) + (uvPercent * 0.08) + (violetPercent * 0.08);
                     break;
 
                 case "5750":
                 case "5751":
-                case "5752": // 7+ Channel Advanced Series (StringThreeTools.java)
-                    total = ((redPercent * 0.29) + (greenPercent * 0.69) + (bluePercent * 0.73) + (whitePercent * 0.10) + (uvPercent * 0.82)) / 1.06;
+                case "5752": // 7+ Channel Series (StringThreeTools.java / StringFiveTools.java)
+                    total = ((redPercent * 0.29) + (greenPercent * 0.69) + (bluePercent * 0.73) + (whitePercent * 0.10) + (uvPercent * 0.40) + (violetPercent * 0.40)) / 1.06;
                     break;
 
-                case "5746":
-                case "5747":
-                default: // Standard 4-Channel RGBW Series (StringTools.java)
-                    total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11) + (uvPercent * 0.08);
+                default: // 4-Channel Series (5746/5747)
+                    total = (redPercent * 0.39) + (greenPercent * 0.41) + (bluePercent * 0.53) + (whitePercent * 0.11);
                     break;
             }
 
-            return Math.Round(total, 1);
+            double rounded = Math.Round(total, 1);
+            return (rounded > 100.0 && rounded <= 100.15) ? 100.0 : rounded;
+        }
+
+        /// <summary>
+        /// Scales down channel percentages proportionally if total calculated power exceeds 100.0% max limit,
+        /// preserving exact spectrum color ratios and color temperature balance.
+        /// </summary>
+        public static (double R, double G, double B, double W, double UV, double Violet) NormalizeSpectrumToMaxPower(
+            double r, double g, double b, double w, double uv = 0.0, double violet = 0.0, string modelCode = "")
+        {
+            double totalPower = CalculateTotalPowerPercent(r, g, b, w, uv, violet, modelCode);
+            if (totalPower > 100.0 && totalPower > 0)
+            {
+                double scaleFactor = 99.8 / totalPower;
+                r = Math.Round(r * scaleFactor, 1);
+                g = Math.Round(g * scaleFactor, 1);
+                b = Math.Round(b * scaleFactor, 1);
+                w = Math.Round(w * scaleFactor, 1);
+                uv = Math.Round(uv * scaleFactor, 1);
+                violet = Math.Round(violet * scaleFactor, 1);
+
+                int safetyCount = 0;
+                while (CalculateTotalPowerPercent(r, g, b, w, uv, violet, modelCode) > 100.0 && safetyCount++ < 10)
+                {
+                    if (b >= r && b >= g && b >= w && b >= uv && b >= violet && b > 0) b = Math.Round(b - 0.1, 1);
+                    else if (g >= r && g >= w && g >= uv && g >= violet && g > 0) g = Math.Round(g - 0.1, 1);
+                    else if (r >= w && r >= uv && r >= violet && r > 0) r = Math.Round(r - 0.1, 1);
+                    else if (w >= uv && w >= violet && w > 0) w = Math.Round(w - 0.1, 1);
+                    else if (uv >= violet && uv > 0) uv = Math.Round(uv - 0.1, 1);
+                    else if (violet > 0) violet = Math.Round(violet - 0.1, 1);
+                }
+            }
+            return (r, g, b, w, uv, violet);
         }
 
         /// <summary>
@@ -99,12 +134,30 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Builds the live manual spectrum packet (0xFBF9 + R + G + B + W + 5555).
+        /// Builds the live manual spectrum packet (0xFBF9 + R + G + B + W + [UV] + [Violet] + 5555).
         /// Values expected in range 0 - 235.
-        /// Total length: 8 Bytes.
+        /// Total length: 8, 9, or 10 Bytes.
         /// </summary>
-        public static byte[] BuildLiveSpectrumPacket(byte r, byte g, byte b, byte w)
+        public static byte[] BuildLiveSpectrumPacket(byte r, byte g, byte b, byte w, byte uv = 0, byte violet = 0)
         {
+            if (violet > 0)
+            {
+                return new byte[]
+                {
+                    0xFB, 0xF9,
+                    r, g, b, w, uv, violet,
+                    0x55, 0x55
+                };
+            }
+            if (uv > 0)
+            {
+                return new byte[]
+                {
+                    0xFB, 0xF9,
+                    r, g, b, w, uv,
+                    0x55, 0x55
+                };
+            }
             return new byte[]
             {
                 0xFB, 0xF9,
@@ -116,13 +169,15 @@ namespace WeekAquaWPF.Protocol
         /// <summary>
         /// Overload accepting percentage values (0 - 100%).
         /// </summary>
-        public static byte[] BuildLiveSpectrumPacket(double rPct, double gPct, double bPct, double wPct)
+        public static byte[] BuildLiveSpectrumPacket(double rPct, double gPct, double bPct, double wPct, double uvPct = 0.0, double violetPct = 0.0)
         {
             return BuildLiveSpectrumPacket(
                 PercentToByte(rPct),
                 PercentToByte(gPct),
                 PercentToByte(bPct),
-                PercentToByte(wPct)
+                PercentToByte(wPct),
+                PercentToByte(uvPct),
+                PercentToByte(violetPct)
             );
         }
 
@@ -195,16 +250,37 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Builds the Ramp-up/down schedule slot spectrum packet (0xFBF[Point] + R + G + B + W + 5555).
+        /// Builds the Ramp-up/down schedule slot spectrum packet (0xFBF[Point] + R + G + B + W + [UV] + [Violet] + 5555).
         /// Point ID: 1 to 12.
-        /// Total length: 8 Bytes.
+        /// Total length: 8, 9, or 10 Bytes.
         /// </summary>
-        public static byte[] BuildRampSpectrumPacket(int pointId, byte r, byte g, byte b, byte w)
+        public static byte[] BuildRampSpectrumPacket(int pointId, byte r, byte g, byte b, byte w, byte uv = 0, byte violet = 0)
         {
             if (pointId < 1 || pointId > 12)
                 throw new ArgumentOutOfRangeException(nameof(pointId), "Point ID must be between 1 and 12.");
 
             byte secondHeaderByte = (byte)(0xF0 | (pointId & 0x0F));
+
+            if (violet > 0)
+            {
+                return new byte[]
+                {
+                    0xFB,
+                    secondHeaderByte,
+                    r, g, b, w, uv, violet,
+                    0x55, 0x55
+                };
+            }
+            if (uv > 0)
+            {
+                return new byte[]
+                {
+                    0xFB,
+                    secondHeaderByte,
+                    r, g, b, w, uv,
+                    0x55, 0x55
+                };
+            }
 
             return new byte[]
             {

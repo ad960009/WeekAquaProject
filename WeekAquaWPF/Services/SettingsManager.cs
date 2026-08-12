@@ -16,6 +16,8 @@ namespace WeekAquaWPF.Services
         public double GreenPercent { get; set; } = 80;
         public double BluePercent { get; set; } = 80;
         public double WhitePercent { get; set; } = 80;
+        public double UvPercent { get; set; } = 0;
+        public double VioletPercent { get; set; } = 0;
     }
 
     public class DeviceConfig
@@ -26,6 +28,8 @@ namespace WeekAquaWPF.Services
         public double GreenPercent { get; set; } = 50;
         public double BluePercent { get; set; } = 50;
         public double WhitePercent { get; set; } = 50;
+        public double UvPercent { get; set; } = 0;
+        public double VioletPercent { get; set; } = 0;
         public double FanSpeedPercent { get; set; } = 50;
         public bool AutoSendLiveSpectrum { get; set; } = false;
         public string SunriseStartStr { get; set; } = "08:00";

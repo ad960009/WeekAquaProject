@@ -146,10 +146,87 @@ namespace WeekAquaWPF.Models
             }
         }
 
+        private bool _isUvEnabled = true;
+        private double _uvPercent = 0.0;
+
+        public bool IsUvEnabled
+        {
+            get => _isUvEnabled;
+            set
+            {
+                _isUvEnabled = value;
+                if (!_isUvEnabled)
+                {
+                    _uvPercent = 0.0;
+                }
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsUvReadOnly));
+                OnPropertyChanged(nameof(UvPercent));
+                OnPropertyChanged(nameof(UvByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                Validate();
+            }
+        }
+
+        public bool IsUvReadOnly => !_isUvEnabled;
+
+        public double UvPercent
+        {
+            get => _isUvEnabled ? _uvPercent : 0.0;
+            set
+            {
+                _uvPercent = _isUvEnabled ? value : 0.0;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(UvByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                Validate();
+            }
+        }
+
         public byte RedByte => WeekAquaProtocol.PercentToByte(RedPercent);
         public byte GreenByte => WeekAquaProtocol.PercentToByte(GreenPercent);
         public byte BlueByte => WeekAquaProtocol.PercentToByte(BluePercent);
         public byte WhiteByte => WeekAquaProtocol.PercentToByte(WhitePercent);
+        public byte UvByte => WeekAquaProtocol.PercentToByte(UvPercent);
+
+        private bool _isVioletEnabled = true;
+        private double _violetPercent = 0.0;
+
+        public bool IsVioletEnabled
+        {
+            get => _isVioletEnabled;
+            set
+            {
+                _isVioletEnabled = value;
+                if (!_isVioletEnabled)
+                {
+                    _violetPercent = 0.0;
+                }
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsVioletReadOnly));
+                OnPropertyChanged(nameof(VioletPercent));
+                OnPropertyChanged(nameof(VioletByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                Validate();
+            }
+        }
+
+        public bool IsVioletReadOnly => !_isVioletEnabled;
+
+        public double VioletPercent
+        {
+            get => _isVioletEnabled ? _violetPercent : 0.0;
+            set
+            {
+                _violetPercent = _isVioletEnabled ? value : 0.0;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(VioletByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                Validate();
+            }
+        }
+
+        public byte VioletByte => WeekAquaProtocol.PercentToByte(VioletPercent);
 
         private string _modelCode = string.Empty;
 
@@ -165,7 +242,7 @@ namespace WeekAquaWPF.Models
             }
         }
 
-        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, 0, ModelCode);
+        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent, VioletPercent, ModelCode);
 
         #region INotifyDataErrorInfo Implementation
 
@@ -228,11 +305,13 @@ namespace WeekAquaWPF.Models
             ClearErrors(nameof(GreenPercent));
             ClearErrors(nameof(BluePercent));
             ClearErrors(nameof(WhitePercent));
+            ClearErrors(nameof(UvPercent));
+            ClearErrors(nameof(VioletPercent));
 
-            if (StartTime >= EndTime)
+            if (StartTime == EndTime)
             {
-                AddError(nameof(StartTimeStr), $"Start time ({StartTimeStr}) must be earlier than end time ({EndTimeStr}).");
-                AddError(nameof(EndTimeStr), $"End time ({EndTimeStr}) must be later than start time ({StartTimeStr}).");
+                AddError(nameof(StartTimeStr), "Start time and end time cannot be identical for a single slot.");
+                AddError(nameof(EndTimeStr), "Start time and end time cannot be identical for a single slot.");
             }
 
             double totalPower = TotalPowerPercent;
@@ -243,6 +322,8 @@ namespace WeekAquaWPF.Models
                 AddError(nameof(GreenPercent), powerError);
                 AddError(nameof(BluePercent), powerError);
                 AddError(nameof(WhitePercent), powerError);
+                AddError(nameof(UvPercent), powerError);
+                AddError(nameof(VioletPercent), powerError);
             }
         }
 

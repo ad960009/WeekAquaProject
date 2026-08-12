@@ -31,8 +31,10 @@ namespace WeekAquaWPF.Services
         public event Action<byte[]>? DataReceived;
         public event Action<LogDirection, string, byte[]?>? LogMessage;
 
-        public bool IsConnected => _currentDevice != null && _currentDevice.ConnectionStatus == BluetoothConnectionStatus.Connected && _writeCharacteristic != null;
-        public string ConnectedDeviceName => _currentDevice?.Name ?? string.Empty;
+        private bool _isVirtualConnected = false;
+
+        public bool IsConnected => _isVirtualConnected || (_currentDevice != null && _currentDevice.ConnectionStatus == BluetoothConnectionStatus.Connected && _writeCharacteristic != null);
+        public string ConnectedDeviceName => _isVirtualConnected ? "Virtual Device" : (_currentDevice?.Name ?? string.Empty);
 
         public BleService()
         {
@@ -139,6 +141,14 @@ namespace WeekAquaWPF.Services
                 Disconnect();
 
                 LogMessage?.Invoke(LogDirection.Info, $"Connecting to BLE address {FormatMacAddress(bluetoothAddress)}...", null);
+
+                if (bluetoothAddress >= 0xAABBCC112233 && bluetoothAddress <= 0xAABBCC556677)
+                {
+                    _isVirtualConnected = true;
+                    LogMessage?.Invoke(LogDirection.Info, $"Connected to Virtual Demo Device ({FormatMacAddress(bluetoothAddress)}).", null);
+                    ConnectionStateChanged?.Invoke(true, "Connected (Virtual Mode)");
+                    return true;
+                }
 
                 _currentDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(bluetoothAddress);
                 if (_currentDevice == null)
@@ -309,7 +319,12 @@ namespace WeekAquaWPF.Services
                         await _queueSemaphore.WaitAsync(_queueCts.Token);
                         if (_writeQueue.TryDequeue(out byte[]? packetData))
                         {
-                            if (IsConnected && _writeCharacteristic != null && packetData != null)
+                            if (_isVirtualConnected && packetData != null)
+                            {
+                                LogMessage?.Invoke(LogDirection.TX, $"[Virtual] Sent {packetData.Length} bytes", packetData);
+                                await Task.Delay(500, _queueCts.Token);
+                            }
+                            else if (IsConnected && _writeCharacteristic != null && packetData != null)
                             {
                                 try
                                 {
@@ -355,6 +370,7 @@ namespace WeekAquaWPF.Services
 
         public void Disconnect()
         {
+            _isVirtualConnected = false;
             if (_notifyCharacteristic != null)
             {
                 _notifyCharacteristic.ValueChanged -= OnNotificationReceived;

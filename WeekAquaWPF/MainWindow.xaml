@@ -326,10 +326,10 @@
                                 </TextBlock>
                             </Grid>
 
-                            <!-- UV / UVA Channel (Enabled if detected on 5/6-ch models: 5748/5749/574A) -->
+                            <!-- UV / UVA Channel (Enabled if detected on 5/6-ch models: 5748+) -->
                             <Grid Margin="0,4" IsEnabled="{Binding HasUvChannel}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="65"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="70"/>
                                 </Grid.ColumnDefinitions>
@@ -340,6 +340,23 @@
                                 <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
                                     <Run Text="{Binding UvPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
                                     <Run Text="{Binding UvByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- Violet / UV2 Channel (Enabled if detected on 6/10-ch models: 5749+) -->
+                            <Grid Margin="0,4" IsEnabled="{Binding Has6Channel}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="65"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Violet" Foreground="#E879F9" FontWeight="Bold"/>
+                                </StackPanel>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VioletPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                    <Run Text="{Binding VioletPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                    <Run Text="{Binding VioletByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
                                 </TextBlock>
                             </Grid>
 
@@ -384,6 +401,10 @@
                                 <Button Content="🌺 Red Plant" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="RedGrass" Background="#991B1B" Margin="0,0,4,4"/>
                                 <Button Content="🐟 Fish/Mixed" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="FishMixed" Background="#1E40AF" Margin="0,0,4,4"/>
                                 <Button Content="🪸 Coral/Marine" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralMarine" Background="#5B21B6" Margin="0,0,4,4"/>
+                                <Button Content="🪸 Coral LPS" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralLps" Background="#6B21A8" Margin="0,0,4,4"/>
+                                <Button Content="💎 Coral SPS" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralSps" Background="#7E22CE" Margin="0,0,4,4"/>
+                                <Button Content="✨ Coral AB+" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralAb" Background="#4C1D95" Margin="0,0,4,4"/>
+                                <Button Content="🐠 Marine FOT" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="MarineFot" Background="#1D4ED8" Margin="0,0,4,4"/>
                                 <Button Content="💥 Cycling Max" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="AlgaeMax" Background="#9A3412" Margin="0,0,4,4"/>
                             </WrapPanel>
                         </StackPanel>
@@ -452,10 +473,11 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📅 Ramp-up/down Schedule Editor (Points 1~12)" FontSize="16" FontWeight="Bold" Foreground="#A78BFA"/>
                                 <TextBlock Text=" Queue Delay: 500ms" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center" Margin="8,0,0,0"/>
@@ -463,7 +485,31 @@
                             <Button Content="📡 Sync All Schedule Slots" Command="{Binding SyncAllRampSlotsCommand}" HorizontalAlignment="Right" Background="#7C3AED"/>
                         </Grid>
 
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding RampSlots}" AutoGenerateColumns="False"
+                        <!-- Schedule Quick Auto-Calculator Helper Card -->
+                        <Border Grid.Row="1" Background="#27272A" CornerRadius="6" Padding="10,8" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+                                    <TextBlock Text="🌅 Sunrise Time:" FontSize="11" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox Text="{Binding ScheduleSunriseStr, UpdateSourceTrigger=PropertyChanged}" Width="55" FontSize="11" Padding="4,2" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#52525B" TextAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+                                    <TextBlock Text="🌇 Sunset Time:" FontSize="11" FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox Text="{Binding ScheduleSunsetStr, UpdateSourceTrigger=PropertyChanged}" Width="55" FontSize="11" Padding="4,2" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#52525B" TextAlignment="Center"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="3" Content="⚡ Auto-Calculate 12-Slot Schedule Times" Command="{Binding ApplyAutoScheduleTimesCommand}" Background="#2563EB" FontSize="11" Padding="10,4" FontWeight="Bold"/>
+                            </Grid>
+                        </Border>
+
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding RampSlots}" AutoGenerateColumns="False"
                                   CanUserAddRows="False" Background="#18181B" RowBackground="#27272A"
                                   AlternatingRowBackground="#1F1F23" Foreground="#F4F4F5"
                                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#3F3F46"
@@ -489,6 +535,8 @@
                                 <DataGridTextColumn Header="Green %" Binding="{Binding GreenPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
                                 <DataGridTextColumn Header="Blue %" Binding="{Binding BluePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
                                 <DataGridTextColumn Header="White %" Binding="{Binding WhitePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
+                                <DataGridTextColumn Header="UV/UVA %" Binding="{Binding UvPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" IsReadOnly="{Binding IsUvReadOnly}" Width="65"/>
+                                <DataGridTextColumn Header="Violet/UV2 %" Binding="{Binding VioletPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" IsReadOnly="{Binding IsVioletReadOnly}" Width="75"/>
                                 <DataGridTextColumn Header="Total Power" Binding="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" IsReadOnly="True" Width="80"/>
                             </DataGrid.Columns>
                         </DataGrid>

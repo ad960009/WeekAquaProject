@@ -45,9 +45,13 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged();
                 HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
                 string modelCode = _selectedDevice?.ModelCode ?? string.Empty;
+                HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
+                Has6Channel = _selectedDevice?.Has6Channel ?? false;
                 foreach (var slot in RampSlots)
                 {
                     slot.ModelCode = modelCode;
+                    slot.IsUvEnabled = HasUvChannel;
+                    slot.IsVioletEnabled = Has6Channel;
                 }
                 if (_selectedDevice != null)
                 {
@@ -59,7 +63,33 @@ namespace WeekAquaWPF.ViewModels
         public bool HasUvChannel
         {
             get => _hasUvChannel;
-            set { _hasUvChannel = value; OnPropertyChanged(); }
+            set
+            {
+                _hasUvChannel = value;
+                OnPropertyChanged();
+                if (!_hasUvChannel) UvPercent = 0.0;
+                foreach (var slot in RampSlots)
+                {
+                    slot.IsUvEnabled = _hasUvChannel;
+                }
+            }
+        }
+
+        private bool _has6Channel = false;
+
+        public bool Has6Channel
+        {
+            get => _has6Channel;
+            set
+            {
+                _has6Channel = value;
+                OnPropertyChanged();
+                if (!_has6Channel) VioletPercent = 0.0;
+                foreach (var slot in RampSlots)
+                {
+                    slot.IsVioletEnabled = _has6Channel;
+                }
+            }
         }
 
         public bool IsScanning
@@ -88,7 +118,7 @@ namespace WeekAquaWPF.ViewModels
 
         public string CurrentModelCode => SelectedDevice?.ModelCode ?? string.Empty;
 
-        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
+        public double TotalPowerPercent => WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, UvPercent, VioletPercent, CurrentModelCode);
 
         // Live Spectrum Colors with Max Power Limit (100%) Guard
         public double RedPercent
@@ -96,7 +126,7 @@ namespace WeekAquaWPF.ViewModels
             get => _redPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(value, GreenPercent, BluePercent, WhitePercent, UvPercent, VioletPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
                     _redPercent = Math.Max(0, _redPercent);
@@ -118,7 +148,7 @@ namespace WeekAquaWPF.ViewModels
             get => _greenPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent, UvPercent, CurrentModelCode);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, value, BluePercent, WhitePercent, UvPercent, VioletPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
                     _greenPercent = Math.Max(0, _greenPercent);
@@ -140,7 +170,7 @@ namespace WeekAquaWPF.ViewModels
             get => _bluePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent, UvPercent, CurrentModelCode);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, value, WhitePercent, UvPercent, VioletPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
                     _bluePercent = Math.Max(0, _bluePercent);
@@ -162,7 +192,7 @@ namespace WeekAquaWPF.ViewModels
             get => _whitePercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value, UvPercent, CurrentModelCode);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, value, UvPercent, VioletPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
                     _whitePercent = Math.Max(0, _whitePercent);
@@ -184,7 +214,7 @@ namespace WeekAquaWPF.ViewModels
             get => _uvPercent;
             set
             {
-                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, value, CurrentModelCode);
+                double total = WeekAquaProtocol.CalculateTotalPowerPercent(RedPercent, GreenPercent, BluePercent, WhitePercent, value, VioletPercent, CurrentModelCode);
                 if (total > 100.0)
                 {
                     _uvPercent = Math.Max(0, _uvPercent);
@@ -202,6 +232,35 @@ namespace WeekAquaWPF.ViewModels
         }
 
         public byte UvByte => WeekAquaProtocol.PercentToByte(UvPercent);
+
+        private double _violetPercent = 0.0;
+
+        public double VioletPercent
+        {
+            get => _violetPercent;
+            set
+            {
+                if (!_has6Channel)
+                {
+                    _violetPercent = 0.0;
+                }
+                else if (TotalPowerPercent - _violetPercent + value > 100.0)
+                {
+                    _violetPercent = Math.Max(0, _violetPercent);
+                    AddLog(LogDirection.Warning, $"Total power limit exceeded (100%). Violet/UV2 clamped for model [{CurrentModelCode}].");
+                }
+                else
+                {
+                    _violetPercent = value;
+                }
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(VioletByte));
+                OnPropertyChanged(nameof(TotalPowerPercent));
+                OnSpectrumChanged();
+            }
+        }
+
+        public byte VioletByte => WeekAquaProtocol.PercentToByte(VioletPercent);
 
         public double FanSpeedPercent
         {
@@ -262,6 +321,34 @@ namespace WeekAquaWPF.ViewModels
             set { _sunriseRampIndex = value; OnPropertyChanged(); }
         }
 
+        // Schedule Editor Quick Auto-Calculator Properties
+        private TimeSpan _scheduleSunriseTime = new TimeSpan(8, 0, 0);
+        private TimeSpan _scheduleSunsetTime = new TimeSpan(20, 0, 0);
+
+        public TimeSpan ScheduleSunriseTime
+        {
+            get => _scheduleSunriseTime;
+            set { _scheduleSunriseTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(ScheduleSunriseStr)); }
+        }
+
+        public TimeSpan ScheduleSunsetTime
+        {
+            get => _scheduleSunsetTime;
+            set { _scheduleSunsetTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(ScheduleSunsetStr)); }
+        }
+
+        public string ScheduleSunriseStr
+        {
+            get => _scheduleSunriseTime.ToString(@"hh\:mm");
+            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) ScheduleSunriseTime = ts; }
+        }
+
+        public string ScheduleSunsetStr
+        {
+            get => _scheduleSunsetTime.ToString(@"hh\:mm");
+            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) ScheduleSunsetTime = ts; }
+        }
+
         // Commands
         public ICommand ScanCommand { get; }
         public ICommand ConnectCommand { get; }
@@ -273,6 +360,7 @@ namespace WeekAquaWPF.ViewModels
         public ICommand ApplyPresetSpectrumCommand { get; }
         public ICommand SendSunriseSunsetCommand { get; }
         public ICommand SyncAllRampSlotsCommand { get; }
+        public ICommand ApplyAutoScheduleTimesCommand { get; }
         public ICommand ClearLogCommand { get; }
 
         public MainViewModel()
@@ -293,11 +381,13 @@ namespace WeekAquaWPF.ViewModels
             ApplyPresetSpectrumCommand = new RelayCommand(param => ApplyPresetSpectrum(param));
             SendSunriseSunsetCommand = new RelayCommand(SendSunriseSunset);
             SyncAllRampSlotsCommand = new RelayCommand(SyncAllRampSlots);
+            ApplyAutoScheduleTimesCommand = new RelayCommand(ApplyAutoScheduleTimes);
             ClearLogCommand = new RelayCommand(ClearLog);
 
             _appSettings = SettingsManager.LoadSettings();
 
             InitializeRampSlots();
+            AddVirtualDemoDevices();
         }
 
         private void SendSunriseSunset()
@@ -322,21 +412,37 @@ namespace WeekAquaWPF.ViewModels
         {
             if (presetName == null) return;
             string key = presetName.ToString() ?? "";
-            (double R, double G, double B, double W) preset = key switch
+            (double R, double G, double B, double W, double UV, double V) preset = key switch
             {
                 "GreenGrass" => WeekAquaProtocol.Presets.GreenGrass,
                 "RedGrass" => WeekAquaProtocol.Presets.RedGrass,
                 "FishMixed" => WeekAquaProtocol.Presets.FishMixed,
                 "CoralMarine" => WeekAquaProtocol.Presets.CoralMarine,
+                "CoralLps" => WeekAquaProtocol.Presets.CoralLps,
+                "CoralSps" => WeekAquaProtocol.Presets.CoralSps,
+                "CoralAb" => WeekAquaProtocol.Presets.CoralAb,
+                "MarineFot" => WeekAquaProtocol.Presets.MarineFot,
                 "AlgaeMax" => WeekAquaProtocol.Presets.AlgaeMax,
-                _ => (50, 50, 50, 50)
+                _ => (50, 50, 50, 50, 0, 0)
             };
 
-            // 1. Apply to Live Manual Spectrum Controls
-            RedPercent = preset.R;
-            GreenPercent = preset.G;
-            BluePercent = preset.B;
-            WhitePercent = preset.W;
+            // 1. Normalize preset for Live Manual Spectrum Controls to ensure total power <= 100%
+            var liveNorm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
+                preset.R,
+                preset.G,
+                preset.B,
+                preset.W,
+                HasUvChannel ? preset.UV : 0.0,
+                Has6Channel ? preset.V : 0.0,
+                CurrentModelCode
+            );
+
+            RedPercent = liveNorm.R;
+            GreenPercent = liveNorm.G;
+            BluePercent = liveNorm.B;
+            WhitePercent = liveNorm.W;
+            UvPercent = liveNorm.UV;
+            VioletPercent = liveNorm.Violet;
 
             // 2. Naturally scale preset color ratio across 12 Ramp Schedule Slots according to daily photoperiod intensity curve
             double[] dailyIntensityCurve = new double[]
@@ -359,10 +465,23 @@ namespace WeekAquaWPF.ViewModels
             {
                 double factor = dailyIntensityCurve[i];
                 var slot = RampSlots[i];
-                slot.RedPercent = Math.Round(preset.R * factor, 1);
-                slot.GreenPercent = Math.Round(preset.G * factor, 1);
-                slot.BluePercent = Math.Round(preset.B * factor, 1);
-                slot.WhitePercent = Math.Round(preset.W * factor, 1);
+
+                var slotNorm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
+                    preset.R * factor,
+                    preset.G * factor,
+                    preset.B * factor,
+                    preset.W * factor,
+                    HasUvChannel ? preset.UV * factor : 0.0,
+                    Has6Channel ? preset.V * factor : 0.0,
+                    CurrentModelCode
+                );
+
+                slot.RedPercent = slotNorm.R;
+                slot.GreenPercent = slotNorm.G;
+                slot.BluePercent = slotNorm.B;
+                slot.WhitePercent = slotNorm.W;
+                slot.UvPercent = slotNorm.UV;
+                slot.VioletPercent = slotNorm.Violet;
                 slot.Validate();
             }
 
@@ -457,6 +576,8 @@ namespace WeekAquaWPF.ViewModels
                             target.GreenPercent = slotConfig.GreenPercent;
                             target.BluePercent = slotConfig.BluePercent;
                             target.WhitePercent = slotConfig.WhitePercent;
+                            target.UvPercent = slotConfig.UvPercent;
+                            target.VioletPercent = slotConfig.VioletPercent;
                         }
                     }
                 }
@@ -495,7 +616,9 @@ namespace WeekAquaWPF.ViewModels
                     RedPercent = slot.RedPercent,
                     GreenPercent = slot.GreenPercent,
                     BluePercent = slot.BluePercent,
-                    WhitePercent = slot.WhitePercent
+                    WhitePercent = slot.WhitePercent,
+                    UvPercent = slot.UvPercent,
+                    VioletPercent = slot.VioletPercent
                 });
             }
 
@@ -509,8 +632,62 @@ namespace WeekAquaWPF.ViewModels
         private void StartScan()
         {
             DiscoveredDevices.Clear();
+            AddVirtualDemoDevices();
             IsScanning = true;
             _bleService.StartScan();
+        }
+
+        private void AddVirtualDemoDevices()
+        {
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua L-Series [Virtual 4CH]",
+                BluetoothAddress = 0xAABBCC112233,
+                MacAddress = "AA:BB:CC:11:22:33",
+                ModelCode = "5746",
+                HasUvChannel = false,
+                Rssi = -45
+            });
+
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua T90 Pro [Virtual 5CH+UV]",
+                BluetoothAddress = 0xAABBCC223344,
+                MacAddress = "AA:BB:CC:22:33:44",
+                ModelCode = "5748",
+                HasUvChannel = true,
+                Rssi = -50
+            });
+
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua A-Series [Virtual 6CH+UV]",
+                BluetoothAddress = 0xAABBCC334455,
+                MacAddress = "AA:BB:CC:33:44:55",
+                ModelCode = "5749",
+                HasUvChannel = true,
+                Rssi = -55
+            });
+
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua Marine Pro [Virtual 10CH Coral]",
+                BluetoothAddress = 0xAABBCC445566,
+                MacAddress = "AA:BB:CC:44:55:66",
+                ModelCode = "5752",
+                HasUvChannel = true,
+                Rssi = -60
+            });
+
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua Smart Plug [Virtual Power Meter]",
+                BluetoothAddress = 0xAABBCC556677,
+                MacAddress = "AA:BB:CC:55:66:77",
+                ModelCode = "5755",
+                HasUvChannel = false,
+                Rssi = -65
+            });
         }
 
         private async void ConnectToSelectedDevice()
@@ -536,7 +713,7 @@ namespace WeekAquaWPF.ViewModels
 
         private void SendLiveSpectrum()
         {
-            byte[] packet = WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte);
+            byte[] packet = WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
             _bleService.EnqueueWritePacket(packet);
         }
 
@@ -601,7 +778,9 @@ namespace WeekAquaWPF.ViewModels
                         slot.RedByte,
                         slot.GreenByte,
                         slot.BlueByte,
-                        slot.WhiteByte
+                        slot.WhiteByte,
+                        slot.UvByte,
+                        slot.VioletByte
                     );
                     _bleService.EnqueueWritePacket(spectrumPacket);
                     enqueuedCount += 2;
@@ -613,6 +792,72 @@ namespace WeekAquaWPF.ViewModels
             }
 
             AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot packets (Processing with 500ms queue delay).");
+        }
+
+        private static TimeSpan AddHoursMod24(TimeSpan baseTime, double hoursToAdd)
+        {
+            double totalMinutes = baseTime.TotalMinutes + (hoursToAdd * 60.0);
+            double modMinutes = totalMinutes % (24.0 * 60.0);
+            if (modMinutes < 0) modMinutes += 24.0 * 60.0;
+            return TimeSpan.FromMinutes(modMinutes);
+        }
+
+        private void ApplyAutoScheduleTimes()
+        {
+            double totalHours;
+            if (ScheduleSunriseTime == ScheduleSunsetTime)
+            {
+                // Identical times -> 24-hour full photoperiod cycle
+                totalHours = 24.0;
+            }
+            else if (ScheduleSunsetTime > ScheduleSunriseTime)
+            {
+                // Same-day photoperiod (e.g., 08:00 to 20:00)
+                totalHours = (ScheduleSunsetTime - ScheduleSunriseTime).TotalHours;
+            }
+            else
+            {
+                // Midnight-crossing photoperiod (e.g., 18:00 to 02:00)
+                totalHours = 24.0 - (ScheduleSunriseTime - ScheduleSunsetTime).TotalHours;
+            }
+
+            double r1 = Math.Max(0.25, totalHours * 0.10); // Ramp 1
+            double r2 = Math.Max(0.50, totalHours * 0.20); // Ramp 2
+            double r3 = Math.Max(0.75, totalHours * 0.30); // Ramp 3
+            double peakMid = totalHours * 0.50;           // Midday Peak Center
+            double r4 = Math.Min(totalHours - 0.75, totalHours * 0.70); // Afternoon Ramp
+            double r5 = Math.Min(totalHours - 0.50, totalHours * 0.85); // Sunset Start
+            double r6 = totalHours;                       // Sunset End
+
+            TimeSpan t0 = ScheduleSunriseTime;
+
+            (TimeSpan Start, TimeSpan End)[] slotTimes = new (TimeSpan Start, TimeSpan End)[]
+            {
+                (t0, AddHoursMod24(t0, r1)),                                       // Slot 1: 🌅 Sunrise Start
+                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                    // Slot 2: 🌄 Morning Ramp Up
+                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                    // Slot 3: ☀️ Late Morning
+                (AddHoursMod24(t0, r3), AddHoursMod24(t0, peakMid)),               // Slot 4: ☀️ Noon Peak Start
+                (AddHoursMod24(t0, peakMid), AddHoursMod24(t0, r4)),               // Slot 5: ☀️ Afternoon Peak End
+                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                    // Slot 6: 🌤️ Mid-Afternoon Down
+                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                    // Slot 7: 🌇 Sunset Start -> End
+                (AddHoursMod24(t0, r6), AddHoursMod24(t0, r6 + 1.0)),              // Slot 8: 🌆 Golden Hour
+                (AddHoursMod24(t0, r6 + 1.0), AddHoursMod24(t0, r6 + 2.0)),        // Slot 9: 🌆 Twilight Dusk
+                (AddHoursMod24(t0, r6 + 2.0), AddHoursMod24(t0, r6 + 3.0)),        // Slot 10: 🌙 Moonlight Glow
+                (AddHoursMod24(t0, r6 + 3.0), AddHoursMod24(t0, r6 + 3.5)),        // Slot 11: 🌌 Dim Night Slope
+                (AddHoursMod24(t0, r6 + 3.5), t0)                                  // Slot 12: 🌑 Total Darkness
+            };
+
+            for (int i = 0; i < RampSlots.Count && i < slotTimes.Length; i++)
+            {
+                var times = slotTimes[i];
+                var slot = RampSlots[i];
+                slot.StartTime = times.Start;
+                slot.EndTime = times.End;
+                slot.Validate();
+            }
+
+            string modeDesc = ScheduleSunriseTime == ScheduleSunsetTime ? "24-Hour Cycle" : $"{totalHours:F1}h Photoperiod";
+            AddLog(LogDirection.Info, $"Auto-calculated 12 schedule slot times based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}].");
         }
 
         private void ClearLog()
