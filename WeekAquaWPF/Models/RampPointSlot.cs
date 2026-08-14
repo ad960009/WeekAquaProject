@@ -322,6 +322,12 @@ namespace WeekAquaWPF.Models
             ClearErrors(nameof(UvPercent));
             ClearErrors(nameof(VioletPercent));
 
+            // Disabled slots (unchecked) are cleared (0W) on transmission and should not trigger validation errors
+            if (!IsEnabled)
+            {
+                return;
+            }
+
             if (StartTime == EndTime)
             {
                 AddError(nameof(StartTimeStr), "Start time and end time cannot be identical.");
