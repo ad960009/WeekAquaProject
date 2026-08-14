@@ -35,12 +35,18 @@ namespace WeekAquaWPF.Services
         public string SunriseStartStr { get; set; } = "08:00";
         public string SunriseEndStr { get; set; } = "18:00";
         public int SunriseRampIndex { get; set; } = 2; // Default 1h
+        public string ScheduleSunriseStr { get; set; } = "08:00";
+        public string ScheduleSunsetStr { get; set; } = "20:00";
+        public bool KeepMoonlight { get; set; } = true;
         public List<SlotConfig> RampSlots { get; set; } = new List<SlotConfig>();
     }
 
     public class AppSettingsData
     {
         public string LastConnectedMac { get; set; } = string.Empty;
+        public string DefaultScheduleSunriseStr { get; set; } = "08:00";
+        public string DefaultScheduleSunsetStr { get; set; } = "20:00";
+        public bool DefaultKeepMoonlight { get; set; } = true;
         public Dictionary<string, DeviceConfig> Devices { get; set; } = new Dictionary<string, DeviceConfig>();
     }
 

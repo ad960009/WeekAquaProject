@@ -592,6 +592,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
@@ -606,7 +607,9 @@
                                     <TextBox Text="{Binding ScheduleSunsetStr, UpdateSourceTrigger=PropertyChanged}" Width="55" FontSize="11" Padding="4,2" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#52525B" TextAlignment="Center"/>
                                 </StackPanel>
 
-                                <Button Grid.Column="3" Content="⚡ Auto-Calculate 12-Slot Schedule Times" Command="{Binding ApplyAutoScheduleTimesCommand}" Background="#2563EB" FontSize="11" Padding="10,4" FontWeight="Bold"/>
+                                <CheckBox Grid.Column="2" Content="🌙 Keep Night Moonlight (3~5%)" IsChecked="{Binding KeepMoonlight, Mode=TwoWay}" Foreground="#93C5FD" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="심야/소등 시간대(Slot 12)에 완전 암흑 대신 은은한 달빛(Blue 4%)을 유지합니다."/>
+
+                                <Button Grid.Column="4" Content="⚡ Auto-Calculate 12-Slot Schedule Times" Command="{Binding ApplyAutoScheduleTimesCommand}" Background="#2563EB" FontSize="11" Padding="10,4" FontWeight="Bold"/>
                             </Grid>
                         </Border>
 
@@ -635,8 +638,20 @@
                                 <DataGridTextColumn Header="Red %" Binding="{Binding RedPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
                                 <DataGridTextColumn Header="Green %" Binding="{Binding GreenPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
                                 <DataGridTextColumn Header="Blue %" Binding="{Binding BluePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
-                                <DataGridTextColumn Header="White %" Binding="{Binding WhitePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="55"/>
-                                <DataGridTextColumn Header="UV/UVA %" Binding="{Binding UvPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" IsReadOnly="{Binding IsUvReadOnly}" Width="65"/>
+                                <DataGridTextColumn Binding="{Binding WhitePercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" Width="65">
+                                    <DataGridTextColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DataContext.ScheduleChannel4Header, RelativeSource={RelativeSource AncestorType=DataGrid}}" FontWeight="SemiBold"/>
+                                        </DataTemplate>
+                                    </DataGridTextColumn.HeaderTemplate>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Binding="{Binding UvPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" IsReadOnly="{Binding IsUvReadOnly}" Width="70">
+                                    <DataGridTextColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DataContext.ScheduleChannel5Header, RelativeSource={RelativeSource AncestorType=DataGrid}}" FontWeight="SemiBold"/>
+                                        </DataTemplate>
+                                    </DataGridTextColumn.HeaderTemplate>
+                                </DataGridTextColumn>
                                 <DataGridTextColumn Header="Violet/UV2 %" Binding="{Binding VioletPercent, Mode=TwoWay, StringFormat='{}{0:0}', ValidatesOnNotifyDataErrors=True}" IsReadOnly="{Binding IsVioletReadOnly}" Width="75"/>
                                 <DataGridTextColumn Header="Total Power" Binding="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" IsReadOnly="True" Width="80"/>
                             </DataGrid.Columns>

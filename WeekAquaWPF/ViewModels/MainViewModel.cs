@@ -50,6 +50,9 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged(nameof(Channel4Name));
                 OnPropertyChanged(nameof(Channel4Color));
                 OnPropertyChanged(nameof(Channel4Header));
+                OnPropertyChanged(nameof(ScheduleChannel4Header));
+                OnPropertyChanged(nameof(ScheduleChannel5Header));
+                OnPropertyChanged(nameof(ScheduleChannel6Header));
                 foreach (var slot in RampSlots)
                 {
                     slot.ModelCode = modelCode;
@@ -75,12 +78,18 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged(nameof(Channel4Name));
                 OnPropertyChanged(nameof(Channel4Color));
                 OnPropertyChanged(nameof(Channel4Header));
+                OnPropertyChanged(nameof(ScheduleChannel4Header));
+                OnPropertyChanged(nameof(ScheduleChannel5Header));
             }
         }
 
         public string Channel4Name => Is4ChannelRgbUv ? "UV (4th Ch)" : "White";
         public string Channel4Color => Is4ChannelRgbUv ? "#C084FC" : "#F59E0B";
         public string Channel4Header => Is4ChannelRgbUv ? "UV Channel (395nm)" : "White Channel";
+
+        public string ScheduleChannel4Header => Is4ChannelRgbUv ? "UV %" : "White %";
+        public string ScheduleChannel5Header => Is4ChannelRgbUv ? "White %" : "UV/UVA %";
+        public string ScheduleChannel6Header => "Violet/UV2 %";
 
         public bool HasUvChannel
         {
@@ -89,6 +98,8 @@ namespace WeekAquaWPF.ViewModels
             {
                 _hasUvChannel = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(ScheduleChannel4Header));
+                OnPropertyChanged(nameof(ScheduleChannel5Header));
                 if (!_hasUvChannel) UvPercent = 0.0;
                 foreach (var slot in RampSlots)
                 {
@@ -380,6 +391,18 @@ namespace WeekAquaWPF.ViewModels
         private TimeSpan _scheduleSunsetTime = new TimeSpan(20, 0, 0);
         private string _scheduleSunriseStr = "08:00";
         private string _scheduleSunsetStr = "20:00";
+        private bool _keepMoonlight = true;
+
+        public bool KeepMoonlight
+        {
+            get => _keepMoonlight;
+            set
+            {
+                _keepMoonlight = value;
+                OnPropertyChanged();
+                SaveCurrentDeviceConfig();
+            }
+        }
 
         public TimeSpan ScheduleSunriseTime
         {
@@ -417,6 +440,7 @@ namespace WeekAquaWPF.ViewModels
                     _scheduleSunriseTime = ts;
                     OnPropertyChanged(nameof(ScheduleSunriseTime));
                 }
+                SaveCurrentDeviceConfig();
             }
         }
 
@@ -432,6 +456,7 @@ namespace WeekAquaWPF.ViewModels
                     _scheduleSunsetTime = ts;
                     OnPropertyChanged(nameof(ScheduleSunsetTime));
                 }
+                SaveCurrentDeviceConfig();
             }
         }
 
@@ -442,8 +467,10 @@ namespace WeekAquaWPF.ViewModels
         public ICommand SendLiveSpectrumCommand { get; }
         public ICommand SendFanSpeedCommand { get; }
         public ICommand SyncRtcTimeCommand { get; }
+        public ICommand SyncRtcCommand => SyncRtcTimeCommand;
         public ICommand SelectModeCommand { get; }
         public ICommand ApplyPresetSpectrumCommand { get; }
+        public ICommand ApplyPresetCommand => ApplyPresetSpectrumCommand;
         public ICommand SendSunriseSunsetCommand { get; }
         public ICommand SyncAllRampSlotsCommand { get; }
         public ICommand ApplyAutoScheduleTimesCommand { get; }
@@ -471,6 +498,24 @@ namespace WeekAquaWPF.ViewModels
             ClearLogCommand = new RelayCommand(ClearLog);
 
             _appSettings = SettingsManager.LoadSettings();
+
+            if (!string.IsNullOrEmpty(_appSettings.DefaultScheduleSunriseStr))
+            {
+                _scheduleSunriseStr = _appSettings.DefaultScheduleSunriseStr;
+                if (WeekAquaProtocol.TryParseTimeString(_scheduleSunriseStr, out TimeSpan ts))
+                {
+                    _scheduleSunriseTime = ts;
+                }
+            }
+            if (!string.IsNullOrEmpty(_appSettings.DefaultScheduleSunsetStr))
+            {
+                _scheduleSunsetStr = _appSettings.DefaultScheduleSunsetStr;
+                if (WeekAquaProtocol.TryParseTimeString(_scheduleSunsetStr, out TimeSpan ts))
+                {
+                    _scheduleSunsetTime = ts;
+                }
+            }
+            _keepMoonlight = _appSettings.DefaultKeepMoonlight;
 
             InitializeRampSlots();
             AddVirtualDemoDevices();
@@ -553,7 +598,7 @@ namespace WeekAquaWPF.ViewModels
                 0.25, // Slot 9: 🌆 Twilight Dusk
                 0.15, // Slot 10: 🌙 Moonlight Glow
                 0.05, // Slot 11: 🌌 Dim Night Slope
-                0.00  // Slot 12: 🌑 Total Darkness
+                0.00  // Slot 12: 🌑 Total Darkness or Moonlight
             };
 
             for (int i = 0; i < RampSlots.Count && i < dailyIntensityCurve.Length; i++)
@@ -561,23 +606,37 @@ namespace WeekAquaWPF.ViewModels
                 double factor = dailyIntensityCurve[i];
                 var slot = RampSlots[i];
 
-                var slotNorm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
-                    preset.R * factor,
-                    preset.G * factor,
-                    preset.B * factor,
-                    preset.W * factor,
-                    HasUvChannel ? preset.UV * factor : 0.0,
-                    Has6Channel ? preset.V * factor : 0.0,
-                    CurrentModelCode
-                );
+                if (i == 11 && KeepMoonlight)
+                {
+                    // Keep gentle ambient moonlight (Blue 4%) during night slope
+                    slot.IsEnabled = true;
+                    slot.RedPercent = 0;
+                    slot.GreenPercent = 0;
+                    slot.BluePercent = 4.0;
+                    slot.WhitePercent = 0;
+                    slot.UvPercent = 0;
+                    slot.VioletPercent = 0;
+                }
+                else
+                {
+                    var slotNorm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
+                        preset.R * factor,
+                        preset.G * factor,
+                        preset.B * factor,
+                        preset.W * factor,
+                        HasUvChannel ? preset.UV * factor : 0.0,
+                        Has6Channel ? preset.V * factor : 0.0,
+                        CurrentModelCode
+                    );
 
-                slot.IsEnabled = (slotNorm.R > 0 || slotNorm.G > 0 || slotNorm.B > 0 || slotNorm.W > 0 || slotNorm.UV > 0 || slotNorm.Violet > 0);
-                slot.RedPercent = slotNorm.R;
-                slot.GreenPercent = slotNorm.G;
-                slot.BluePercent = slotNorm.B;
-                slot.WhitePercent = slotNorm.W;
-                slot.UvPercent = slotNorm.UV;
-                slot.VioletPercent = slotNorm.Violet;
+                    slot.IsEnabled = (slotNorm.R > 0 || slotNorm.G > 0 || slotNorm.B > 0 || slotNorm.W > 0 || slotNorm.UV > 0 || slotNorm.Violet > 0);
+                    slot.RedPercent = slotNorm.R;
+                    slot.GreenPercent = slotNorm.G;
+                    slot.BluePercent = slotNorm.B;
+                    slot.WhitePercent = slotNorm.W;
+                    slot.UvPercent = slotNorm.UV;
+                    slot.VioletPercent = slotNorm.Violet;
+                }
                 slot.Validate();
             }
 
@@ -586,7 +645,7 @@ namespace WeekAquaWPF.ViewModels
                 SendLiveSpectrum();
             }
 
-            AddLog(LogDirection.Info, $"Applied '{key}' preset spectrum to Live control and 12 schedule slots naturally.");
+            AddLog(LogDirection.Info, $"Applied '{key}' preset spectrum to Live control and 12 schedule slots (Moonlight: {(KeepMoonlight ? "ON" : "OFF")}).");
             SaveCurrentDeviceConfig();
         }
 
@@ -594,21 +653,21 @@ namespace WeekAquaWPF.ViewModels
         {
             RampSlots.Clear();
 
-            // Natural 12-slot Sunrise/Sunset Cycle (All slots strictly Total Power <= 100.0% max limit)
+            // Natural 12-slot Sunrise/Sunset Cycle (Daylight photoperiod completes strictly by 20:00 Sunset)
             var defaultSlots = new (TimeSpan Start, TimeSpan End, double R, double G, double B, double W)[]
             {
-                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 0, 0),   20, 10, 15, 10), // 1: 🌅 Early Sunrise (20.9% Power)
-                (new TimeSpan(9, 0, 0),   new TimeSpan(10, 0, 0),  45, 35, 40, 30), // 2: 🌄 Morning Ramp Up (56.4% Power)
-                (new TimeSpan(10, 0, 0),  new TimeSpan(11, 30, 0), 65, 60, 65, 50), // 3: ☀️ Late Morning (89.9% Power)
-                (new TimeSpan(11, 30, 0), new TimeSpan(13, 30, 0), 70, 65, 70, 55), // 4: ☀️ Noon Peak Sunlight (97.1% Power)
-                (new TimeSpan(13, 30, 0), new TimeSpan(15, 30, 0), 70, 65, 70, 55), // 5: ☀️ Afternoon Peak (97.1% Power)
-                (new TimeSpan(15, 30, 0), new TimeSpan(17, 0, 0),  65, 60, 65, 50), // 6: 🌤️ Mid-Afternoon Ramp Down (89.9% Power)
-                (new TimeSpan(17, 0, 0),  new TimeSpan(18, 30, 0), 50, 40, 50, 35), // 7: 🌇 Sunset Start (66.3% Power)
-                (new TimeSpan(18, 30, 0), new TimeSpan(19, 30, 0), 40, 20, 30, 15), // 8: 🌆 Golden Hour (41.4% Power)
-                (new TimeSpan(19, 30, 0), new TimeSpan(20, 30, 0), 25, 10, 35, 5),  // 9: 🌆 Twilight Dusk (32.9% Power)
-                (new TimeSpan(20, 30, 0), new TimeSpan(21, 30, 0), 5,  0,  30, 0),  // 10: 🌙 Moonlight Glow (17.9% Power)
-                (new TimeSpan(21, 30, 0), new TimeSpan(22, 30, 0), 0,  0,  10, 0),  // 11: 🌌 Dim Night Slope (5.3% Power)
-                (new TimeSpan(22, 30, 0), new TimeSpan(23, 59, 0), 0,  0,  0,  0)   // 12: 🌑 Total Darkness (0.0% Power)
+                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 15, 0),  20, 10, 15, 10), // 1: 🌅 Early Sunrise (20.9% Power)
+                (new TimeSpan(9, 15, 0),  new TimeSpan(10, 45, 0), 45, 35, 40, 30), // 2: 🌄 Morning Ramp Up (56.4% Power)
+                (new TimeSpan(10, 45, 0), new TimeSpan(12, 15, 0), 65, 60, 65, 50), // 3: ☀️ Late Morning (89.9% Power)
+                (new TimeSpan(12, 15, 0), new TimeSpan(14, 0, 0),  70, 65, 70, 55), // 4: ☀️ Noon Peak 1 (97.1% Power)
+                (new TimeSpan(14, 0, 0),  new TimeSpan(15, 45, 0), 70, 65, 70, 55), // 5: ☀️ Afternoon Peak 2 (97.1% Power)
+                (new TimeSpan(15, 45, 0), new TimeSpan(17, 0, 0),  65, 60, 65, 50), // 6: 🌤️ Mid-Afternoon Down (89.9% Power)
+                (new TimeSpan(17, 0, 0),  new TimeSpan(18, 15, 0), 50, 40, 50, 35), // 7: 🌇 Sunset Start (66.3% Power)
+                (new TimeSpan(18, 15, 0), new TimeSpan(19, 15, 0), 40, 20, 30, 15), // 8: 🌆 Golden Hour (41.4% Power)
+                (new TimeSpan(19, 15, 0), new TimeSpan(19, 45, 0), 25, 10, 35, 5),  // 9: 🌆 Twilight Dusk (32.9% Power)
+                (new TimeSpan(19, 45, 0), new TimeSpan(20, 0, 0),  5,  0,  20, 0),  // 10: 🌙 Sunset Finish (12.6% Power) -> 20:00 일몰 완료!
+                (new TimeSpan(20, 0, 0),  new TimeSpan(20, 30, 0), 0,  0,  10, 0),  // 11: 🌌 Dim Night Slope (5.3% Power)
+                (new TimeSpan(20, 30, 0), new TimeSpan(8, 0, 0),   0,  0,  4,  0)   // 12: 🌑 Night Moonlight / Darkness (2.1% Power)
             };
 
             for (int i = 0; i < defaultSlots.Length; i++)
@@ -647,6 +706,31 @@ namespace WeekAquaWPF.ViewModels
                 SunriseStartStr = config.SunriseStartStr;
                 SunriseEndStr = config.SunriseEndStr;
                 SunriseRampIndex = config.SunriseRampIndex;
+
+                if (!string.IsNullOrEmpty(config.ScheduleSunriseStr))
+                {
+                    _scheduleSunriseStr = config.ScheduleSunriseStr;
+                    if (WeekAquaProtocol.TryParseTimeString(_scheduleSunriseStr, out TimeSpan ts))
+                    {
+                        _scheduleSunriseTime = ts;
+                        OnPropertyChanged(nameof(ScheduleSunriseTime));
+                    }
+                    OnPropertyChanged(nameof(ScheduleSunriseStr));
+                }
+
+                if (!string.IsNullOrEmpty(config.ScheduleSunsetStr))
+                {
+                    _scheduleSunsetStr = config.ScheduleSunsetStr;
+                    if (WeekAquaProtocol.TryParseTimeString(_scheduleSunsetStr, out TimeSpan ts))
+                    {
+                        _scheduleSunsetTime = ts;
+                        OnPropertyChanged(nameof(ScheduleSunsetTime));
+                    }
+                    OnPropertyChanged(nameof(ScheduleSunsetStr));
+                }
+
+                _keepMoonlight = config.KeepMoonlight;
+                OnPropertyChanged(nameof(KeepMoonlight));
 
                 OnPropertyChanged(nameof(RedPercent));
                 OnPropertyChanged(nameof(GreenPercent));
@@ -690,47 +774,58 @@ namespace WeekAquaWPF.ViewModels
 
         public void SaveCurrentDeviceConfig()
         {
-            if (SelectedDevice == null || string.IsNullOrWhiteSpace(SelectedDevice.MacAddress)) return;
+            if (_appSettings == null) return;
 
-            var config = new DeviceConfig
-            {
-                MacAddress = SelectedDevice.MacAddress,
-                DeviceName = SelectedDevice.Name,
-                RedPercent = RedPercent,
-                GreenPercent = GreenPercent,
-                BluePercent = BluePercent,
-                WhitePercent = WhitePercent,
-                UvPercent = UvPercent,
-                VioletPercent = VioletPercent,
-                FanSpeedPercent = FanSpeedPercent,
-                AutoSendLiveSpectrum = AutoSendLiveSpectrum,
-                SunriseStartStr = SunriseStartStr,
-                SunriseEndStr = SunriseEndStr,
-                SunriseRampIndex = SunriseRampIndex
-            };
+            // Always update global defaults so settings survive app restarts even without active connection
+            _appSettings.DefaultScheduleSunriseStr = ScheduleSunriseStr;
+            _appSettings.DefaultScheduleSunsetStr = ScheduleSunsetStr;
+            _appSettings.DefaultKeepMoonlight = KeepMoonlight;
 
-            foreach (var slot in RampSlots)
+            if (SelectedDevice != null && !string.IsNullOrWhiteSpace(SelectedDevice.MacAddress))
             {
-                config.RampSlots.Add(new SlotConfig
+                var config = new DeviceConfig
                 {
-                    PointId = slot.PointId,
-                    IsEnabled = slot.IsEnabled,
-                    StartTimeStr = slot.StartTimeStr,
-                    EndTimeStr = slot.EndTimeStr,
-                    RedPercent = slot.RedPercent,
-                    GreenPercent = slot.GreenPercent,
-                    BluePercent = slot.BluePercent,
-                    WhitePercent = slot.WhitePercent,
-                    UvPercent = slot.UvPercent,
-                    VioletPercent = slot.VioletPercent
-                });
+                    MacAddress = SelectedDevice.MacAddress,
+                    DeviceName = SelectedDevice.Name,
+                    RedPercent = RedPercent,
+                    GreenPercent = GreenPercent,
+                    BluePercent = BluePercent,
+                    WhitePercent = WhitePercent,
+                    UvPercent = UvPercent,
+                    VioletPercent = VioletPercent,
+                    FanSpeedPercent = FanSpeedPercent,
+                    AutoSendLiveSpectrum = AutoSendLiveSpectrum,
+                    SunriseStartStr = SunriseStartStr,
+                    SunriseEndStr = SunriseEndStr,
+                    SunriseRampIndex = SunriseRampIndex,
+                    ScheduleSunriseStr = ScheduleSunriseStr,
+                    ScheduleSunsetStr = ScheduleSunsetStr,
+                    KeepMoonlight = KeepMoonlight
+                };
+
+                foreach (var slot in RampSlots)
+                {
+                    config.RampSlots.Add(new SlotConfig
+                    {
+                        PointId = slot.PointId,
+                        IsEnabled = slot.IsEnabled,
+                        StartTimeStr = slot.StartTimeStr,
+                        EndTimeStr = slot.EndTimeStr,
+                        RedPercent = slot.RedPercent,
+                        GreenPercent = slot.GreenPercent,
+                        BluePercent = slot.BluePercent,
+                        WhitePercent = slot.WhitePercent,
+                        UvPercent = slot.UvPercent,
+                        VioletPercent = slot.VioletPercent
+                    });
+                }
+
+                _appSettings.Devices[SelectedDevice.MacAddress] = config;
+                _appSettings.LastConnectedMac = SelectedDevice.MacAddress;
             }
 
-            _appSettings.Devices[SelectedDevice.MacAddress] = config;
-            _appSettings.LastConnectedMac = SelectedDevice.MacAddress;
             SettingsManager.SaveSettings(_appSettings);
-
-            AddLog(LogDirection.Info, $"Saved settings to JSON for device [{SelectedDevice.MacAddress}].");
+            AddLog(LogDirection.Info, "Saved device & schedule settings to JSON.");
         }
 
         private void StartScan()
@@ -864,9 +959,20 @@ namespace WeekAquaWPF.ViewModels
         {
             if (modeParam != null && int.TryParse(modeParam.ToString(), out int modeId))
             {
+                // Synchronize corresponding spectrum preset and schedule slots
+                string presetName = modeId switch
+                {
+                    1 => "Green",
+                    2 => "RedPlant",
+                    3 => "Mixed",
+                    4 => "Fish",
+                    _ => "Green"
+                };
+                ApplyPresetSpectrum(presetName);
+
                 byte[] packet = WeekAquaProtocol.BuildModePacket(modeId);
                 _bleService.EnqueueWritePacket(packet, $"Mode {modeId} Select (FD)");
-                AddLog(LogDirection.Info, $"Enqueued Mode {modeId} packet.");
+                AddLog(LogDirection.Info, $"Enqueued Mode {modeId} packet ({presetName}).");
             }
         }
 
@@ -979,44 +1085,76 @@ namespace WeekAquaWPF.ViewModels
                 totalHours = 24.0 - (ScheduleSunriseTime - ScheduleSunsetTime).TotalHours;
             }
 
-            double r1 = Math.Max(0.25, totalHours * 0.10); // Ramp 1
-            double r2 = Math.Max(0.50, totalHours * 0.20); // Ramp 2
-            double r3 = Math.Max(0.75, totalHours * 0.30); // Ramp 3
-            double peakMid = totalHours * 0.50;           // Midday Peak Center
-            double r4 = Math.Min(totalHours - 0.75, totalHours * 0.70); // Afternoon Ramp
-            double r5 = Math.Min(totalHours - 0.50, totalHours * 0.85); // Sunset Start
-            double r6 = totalHours;                       // Sunset End
+            // Proportional photoperiod ramp checkpoints inside [Sunrise, Sunset]
+            double r1 = totalHours * 0.10; // Slot 1: Sunrise Start
+            double r2 = totalHours * 0.22; // Slot 2: Morning Ramp Up
+            double r3 = totalHours * 0.35; // Slot 3: Late Morning
+            double r4 = totalHours * 0.50; // Slot 4: Midday Peak 1
+            double r5 = totalHours * 0.65; // Slot 5: Afternoon Peak 2
+            double r6 = totalHours * 0.75; // Slot 6: Mid-Afternoon Ramp Down
+            double r7 = totalHours * 0.85; // Slot 7: Sunset Start
+            double r8 = totalHours * 0.92; // Slot 8: Golden Hour
+            double r9 = totalHours * 0.97; // Slot 9: Twilight Dusk
+            double r10 = totalHours;       // Slot 10: Sunset Complete -> Exactly at Sunset Time!
 
             TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
 
             (TimeSpan Start, TimeSpan End)[] slotTimes = new (TimeSpan Start, TimeSpan End)[]
             {
-                (t0, AddHoursMod24(t0, r1)),                                       // Slot 1: 🌅 Sunrise Start
-                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                    // Slot 2: 🌄 Morning Ramp Up
-                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                    // Slot 3: ☀️ Late Morning
-                (AddHoursMod24(t0, r3), AddHoursMod24(t0, peakMid)),               // Slot 4: ☀️ Noon Peak Start
-                (AddHoursMod24(t0, peakMid), AddHoursMod24(t0, r4)),               // Slot 5: ☀️ Afternoon Peak End
-                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                    // Slot 6: 🌤️ Mid-Afternoon Down
-                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                    // Slot 7: 🌇 Sunset Start -> End
-                (AddHoursMod24(t0, r6), AddHoursMod24(t0, r6 + 1.0)),              // Slot 8: 🌆 Golden Hour
-                (AddHoursMod24(t0, r6 + 1.0), AddHoursMod24(t0, r6 + 2.0)),        // Slot 9: 🌆 Twilight Dusk
-                (AddHoursMod24(t0, r6 + 2.0), AddHoursMod24(t0, r6 + 3.0)),        // Slot 10: 🌙 Moonlight Glow
-                (AddHoursMod24(t0, r6 + 3.0), AddHoursMod24(t0, r6 + 3.5)),        // Slot 11: 🌌 Dim Night Slope
-                (AddHoursMod24(t0, r6 + 3.5), t0)                                  // Slot 12: 🌑 Total Darkness
+                (t0, AddHoursMod24(t0, r1)),                                       // Slot 1: 🌅 Sunrise Start (20%)
+                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                    // Slot 2: 🌄 Morning Ramp Up (55%)
+                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                    // Slot 3: ☀️ Late Morning (85%)
+                (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),                    // Slot 4: ☀️ Noon Peak 1 (100%)
+                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                    // Slot 5: ☀️ Afternoon Peak 2 (100%)
+                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                    // Slot 6: 🌤️ Mid-Afternoon Down (85%)
+                (AddHoursMod24(t0, r6), AddHoursMod24(t0, r7)),                    // Slot 7: 🌇 Sunset Start (65%)
+                (AddHoursMod24(t0, r7), AddHoursMod24(t0, r8)),                    // Slot 8: 🌆 Golden Hour (40%)
+                (AddHoursMod24(t0, r8), AddHoursMod24(t0, r9)),                    // Slot 9: 🌆 Twilight Dusk (25%)
+                (AddHoursMod24(t0, r9), AddHoursMod24(t0, r10)),                   // Slot 10: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
+                (AddHoursMod24(t0, r10), AddHoursMod24(t0, r10 + 0.5)),            // Slot 11: 🌌 Dim Night Slope (5%)
+                (AddHoursMod24(t0, r10 + 0.5), t0)                                 // Slot 12: 🌑 Night Moonlight (4%) or Total Darkness (0%)
             };
 
             for (int i = 0; i < RampSlots.Count && i < slotTimes.Length; i++)
             {
                 var times = slotTimes[i];
                 var slot = RampSlots[i];
-                slot.IsEnabled = true;
                 slot.StartTime = times.Start;
                 slot.EndTime = times.End;
+
+                if (i == 11) // Slot 12 (Night / Darkness slot)
+                {
+                    if (KeepMoonlight)
+                    {
+                        slot.IsEnabled = true;
+                        slot.RedPercent = 0;
+                        slot.GreenPercent = 0;
+                        slot.BluePercent = 4.0;
+                        slot.WhitePercent = 0;
+                        slot.UvPercent = 0;
+                        slot.VioletPercent = 0;
+                    }
+                    else
+                    {
+                        slot.IsEnabled = false;
+                        slot.RedPercent = 0;
+                        slot.GreenPercent = 0;
+                        slot.BluePercent = 0;
+                        slot.WhitePercent = 0;
+                        slot.UvPercent = 0;
+                        slot.VioletPercent = 0;
+                    }
+                }
+                else
+                {
+                    slot.IsEnabled = true;
+                }
+
                 slot.Validate();
             }
 
             string modeDesc = ScheduleSunriseTime == ScheduleSunsetTime ? "24-Hour Cycle" : $"{totalHours:F1}h Photoperiod";
-            AddLog(LogDirection.Info, $"Auto-calculated 12 schedule slot times based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}].");
+            AddLog(LogDirection.Info, $"Auto-calculated 12 schedule slot times based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}, Moonlight: {(KeepMoonlight ? "ON" : "OFF")}].");
             SaveCurrentDeviceConfig();
         }
 

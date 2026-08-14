@@ -28,6 +28,9 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 Windows
 
 4. **12-Point Ramp-up/down 고급 다중 스케줄 에디터 (Advanced Schedule Mode)**
    - 하루를 12개 시간 슬롯으로 분할하여 일출 $\rightarrow$ 정오 피크 $\rightarrow$ 일몰 $\rightarrow$ 야간 달빛 스펙트럼 자동 제어
+   - **일출/일몰 기준 12슬롯 자동 시간 계산 (Auto-Calculate 12-Slot Times)**: 설정된 일몰 시각에 정확히 주 조명이 소등되도록 자연스러운 12단계 일조 주기 비례 분배
+   - **🌙 심야 달빛 유지 (Keep Night Moonlight Glow)**: 심야/소등 구간(Slot 12)에 완전 암흑 대신 4%의 은은한 달빛(Blue 4%)을 유지하는 원클릭 토글 옵션
+   - **기기별 White/UV 컬럼 헤더 동적 자동 전환**: 4CH RGB-UV, 4CH RGBW, 5/6CH 멀티 스펙트럼 등 연결된 하드웨어 구성에 맞춰 DataGrid 컬럼 헤더 실시간 전환
    - **스케줄 일괄 유효성 검사 (Batch Validation)**: 시간 역전, 슬롯 간 시간 불일치 실시간 탐지 및 경고
    - **500ms Delayed Write Queue**: 다중 패킷 연쇄 송신 시 패킷 유실 방지를 위한 500ms 지연 큐 전송
    - 비활성화 슬롯 0W 초기화 및 **스케줄 모드 활성화 패킷(`FDF2`)** 자동 연동
@@ -35,8 +38,8 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 Windows
 5. **실시간 스마트 플러그 전력 모니터링**
    - GATT Notify 특성을 통해 전달되는 누적 전력량(kWh) 실시간 스케일링 디코딩 (`rawVal * 4.6566E-8`)
 
-6. **기기별 JSON 설정 영구 보관 (Persistence)**
-   - 기기 MAC 주소별 색상, 쿨링팬 속도, 일출일몰, 12개 슬롯 스케줄을 `%AppData%\WeekAquaWPF\device_config.json`에 영구 보관
+6. **기기별 및 전역 JSON 설정 영구 보관 (Persistence)**
+   - 기기 MAC 주소별 색상, 쿨링팬 속도, 간편/상세 일출일몰 시각, 문라이트 옵션, 12개 슬롯 스케줄을 `%AppData%\WeekAquaWPF\device_config.json`에 영구 보관 (앱 재실행 시 완벽 복원)
 
 ---
 

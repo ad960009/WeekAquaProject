@@ -33,9 +33,9 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
 
 ## 📂 프로젝트 구성
 
-- 📄 **[WeekAqua_BLE_Protocol_Specification.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 APK 분석 기반의 상세 BLE 통신 프로토콜 명세서
-- 💻 **[WeekAquaWPF/](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션
-  - 상세 가이드: [WeekAquaWPF/README.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/README.md)
+- 📄 **[WeekAqua_BLE_Protocol_Specification.md](WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 APK 분석 기반의 상세 BLE 통신 프로토콜 명세서
+- 💻 **[WeekAquaWPF/](WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션
+  - 상세 가이드: [WeekAquaWPF/README.md](WeekAquaWPF/README.md)
 
 ---
 
