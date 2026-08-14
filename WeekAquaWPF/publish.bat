@@ -21,6 +21,7 @@ if errorlevel 1 (
     pause
     exit /b %errorlevel%
 )
+if exist "%OUTPUT_DIR%\SelfContained\*.pdb" del /f /q "%OUTPUT_DIR%\SelfContained\*.pdb"
 
 echo.
 echo [2/2] Building Framework-Dependent Single File (Lightweight)...
@@ -31,12 +32,20 @@ if errorlevel 1 (
     pause
     exit /b %errorlevel%
 )
+if exist "%OUTPUT_DIR%\FrameworkDependent\*.pdb" del /f /q "%OUTPUT_DIR%\FrameworkDependent\*.pdb"
+
+echo.
+echo Packaging Release ZIPs using tar (PDBs Excluded)...
+tar -a -c -f "%OUTPUT_DIR%\WeekAquaWPF-win-x64-SelfContained.zip" -C "%OUTPUT_DIR%\SelfContained" WeekAquaWPF.exe
+tar -a -c -f "%OUTPUT_DIR%\WeekAquaWPF-win-x64-FrameworkDependent.zip" -C "%OUTPUT_DIR%\FrameworkDependent" WeekAquaWPF.exe
 
 echo.
 echo =================================================
-echo  Build Complete! Single-file binaries created:
-echo  - Self-Contained:       %OUTPUT_DIR%\SelfContained\WeekAquaWPF.exe
-echo  - Framework-Dependent:  %OUTPUT_DIR%\FrameworkDependent\WeekAquaWPF.exe
+echo  Build and Package Complete! (PDBs Excluded)
+echo  - Self-Contained Exe:       %OUTPUT_DIR%\SelfContained\WeekAquaWPF.exe
+echo  - Framework-Dependent Exe:  %OUTPUT_DIR%\FrameworkDependent\WeekAquaWPF.exe
+echo  - Self-Contained ZIP:       %OUTPUT_DIR%\WeekAquaWPF-win-x64-SelfContained.zip
+echo  - Framework-Dependent ZIP:  %OUTPUT_DIR%\WeekAquaWPF-win-x64-FrameworkDependent.zip
 echo =================================================
 echo.
 pause
