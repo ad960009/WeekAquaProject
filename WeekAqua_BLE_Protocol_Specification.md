@@ -66,6 +66,11 @@ $$\text{Raw Byte Value} = \text{Math.round}\left( \frac{\text{Percent}}{100.0} \
   * `Byte 5`: White / UV / K 채널 ($0 \sim 235$)
   * `Byte 6~7`: `55 55` (Footer Padding)
 
+> [!NOTE]
+> **4채널 RGBW vs 4채널 RGB/UV 호환성 및 패킷 특징**:
+> * **패킷 비식별성**: BLE 수신 조명 MCU는 `Byte 5`를 4번째 PWM 데이터로 일괄 처리하므로 패킷 프레임 구조상 차이가 존재하지 않습니다.
+> * **기기 식별 알고리즘**: 어드버타이징 데이터의 `ModelCode`(`5746`/`5747`) 및 디바이스 이름 키워드(`_UV`, `_UVA`, `_T90`, `_M90`, `MARINE`, `CORAL`, `_S`)를 자동 감지하여 4번째 채널을 **White(W)** 또는 **UV(Ultraviolet)**로 판별합니다.
+
 #### 쿨링팬 속도 조절 패킷 (`FC` 커맨드)
 * **프레임 예시**: `FC` + `[Fan Byte]` + `555555555555`
 * **Fan Byte**: $\text{Math.round}\left( \frac{\text{FanPercent}}{100.0} \times 235.0 \right)$
@@ -86,32 +91,51 @@ $$\text{Raw Byte Value} = \text{Math.round}\left( \frac{\text{Percent}}{100.0} \
 
 ## 4. 스케줄링(타이머) 및 시간 동기화 로직
 
+> [!IMPORTANT]
+> **시간 데이터의 BCD(Binary-Coded Decimal) 인코딩 규칙**:
+> * 안드로이드 앱은 시간을 2자리 10진수 문자열(`"22"`, `"08"`, `"18"`, `"59"`)로 만든 뒤 `hexStringToBytes()`로 변환하여 BLE로 전송합니다.
+> * 따라서 BLE 수신 MCU는 시간 바이트를 **BCD(Binary-Coded Decimal)**로 해석합니다.
+>   * `22시` $\rightarrow$ `0x22` (십진수 34, BCD 22) *(※ Raw Binary `0x16` 전송 시 MCU가 16시로 오인)*
+>   * `18시` $\rightarrow$ `0x18` (십진수 24, BCD 18) *(※ Raw Binary `0x12` 전송 시 MCU가 12시로 오인)*
+>   * `08시` $\rightarrow$ `0x08`
+>   * `30분` $\rightarrow$ `0x30`
+
 ### (1) RTC 시간 동기화 패킷 (`FF` 커맨드)
 스마트폰의 현재 시간을 조명에 동기화할 때 사용되는 패킷 구조입니다.
 
-* **Hex 프레임**: `FF` + `HH` + `MM` + `SS` + `55555555` (총 8 Byte)
+* **Hex 프레임**: `FF` + `BCD(HH)` + `BCD(MM)` + `BCD(SS)` + `55555555` (총 8 Byte)
   * `Byte 0`: `0xFF` (Command Header)
-  * `Byte 1`: Hour (`00` ~ `23`)
-  * `Byte 2`: Minute (`00` ~ `59`)
-  * `Byte 3`: Second (`00` ~ `59`)
+  * `Byte 1`: Hour BCD (`0x00` ~ `0x23`)
+  * `Byte 2`: Minute BCD (`0x00` ~ `0x59`)
+  * `Byte 3`: Second BCD (`0x00` ~ `0x59`)
   * `Byte 4~7`: `55 55 55 55` (Padding)
 
-### (2) 다중 시간대(Ramp Up/Down) 고급 타이머 설정 패킷 구조
+### (2) 모드 전환 및 활성화 패킷 (`FD` 커맨드)
+* **Simple 일출일몰 모드 활성화**: `FDF1555555555555` (또는 `FDF4` + `FDF1`)
+* **Advanced 다중 슬롯 스케줄 모드 활성화**: `FDF2555555555555` (또는 `FDF2` + `FDF3`)
+
+### (3) 다중 시간대(Ramp Up/Down) 고급 타이머 설정 패킷 구조
 고급(Advanced) 스케줄 모드에서는 하루를 복수의 타임포인트(Point 1 ~ Point 8/12)로 나눕니다. 1개의 타임포인트를 설정할 때 **[시간 범위 패킷]**과 **[해당 시간의 스펙트럼 패킷]** 2개의 패킷을 쌍으로 전송합니다.
 
-#### 1) 시간 범위 패킷 (`FEF1` ~ `FEF8`)
-* **형식**: `FEF` + `[Point ID]` + `[Start Hour]` + `[Start Min]` + `[End Hour]` + `[End Min]` + `5555`
+#### 1) 시간 범위 패킷 (`FEF1` ~ `FEFC`)
+* **형식**: `FEF` + `[Point ID]` + `BCD[Start Hour]` + `BCD[Start Min]` + `BCD[End Hour]` + `BCD[End Min]` + `5555`
 * **예시** (Point 1이 08:00 시작 ~ 20:00 종료인 경우):
-  * `FEF1` + `08` + `00` + `20` + `00` + `5555`
+  * `FEF1` + `08` + `00` + `20` + `00` + `5555` (`FE F1 08 00 20 00 55 55`)
   * Point ID: 1~9 $\rightarrow$ `FEF1` ~ `FEF9`, 10 $\rightarrow$ `FEFA`, 11 $\rightarrow$ `FEFB`, 12 $\rightarrow$ `FEFC`
-  * 슬롯 삭제/초기화 시: `FEF1000000000000` (8 바이트 `0` 처리)
+  * 슬롯 삭제/초기화 시: `FEF1000000005555` (시간 범위 `0` 처리)
 
-#### 2) 해당 타임포인트의 출력/스펙트럼 패킷 (`FBF1` ~ `FBF8`)
+#### 2) 해당 타임포인트의 출력/스펙트럼 패킷 (`FBF1` ~ `FBFC`)
 * **형식**: `FBF` + `[Point ID]` + `[R Byte]` + `[G Byte]` + `[B Byte]` + `[W Byte]` + `5555`
 * **예시** (Point 1의 RGBW 전력 설정):
   * `FBF1` + `EB` + `C8` + `96` + `00` + `5555`
+  * 슬롯 비활성 시: `FBF1000000005555` (0 전력 스펙트럼 전송하여 슬롯 잔여 출력 초기화)
 
-### (3) BLE 패킷 분할 전송 및 딜레이 스케줄링 (Write Queue)
+### (4) 간편 일출일몰(Simple Sunrise/Sunset) 타이머 패킷 (`FEF9` 커맨드)
+* **형식**: `FEF9` + `BCD[Start Hour]` + `BCD[Start Min]` + `BCD[End Hour]` + `BCD[End Min]` + `[Type: 01]` + `[Ramp Index: 00~05]`
+* **예시** (08:00 시작 ~ 18:00 종료, 1시간 램프 인덱스 2인 경우):
+  * `FE F9 08 00 18 00 01 02`
+
+### (5) BLE 패킷 분할 전송 및 딜레이 스케줄링 (Write Queue)
 다수의 타이머/스펙트럼 패킷 전송 시 패킷 손실 방지를 위해 앱 내부에서는 `writePowerDelayed()` 메소드를 통해 **500ms(0.5초) 간격의 큐(Queue) 딜레이 전송**을 수행합니다.
 
 ---

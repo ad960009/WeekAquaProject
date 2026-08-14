@@ -118,7 +118,38 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Builds the RTC time sync packet (0xFF + HH + MM + SS + 55555555).
+        /// Converts integer decimal (0 - 99) to BCD (Binary-Coded Decimal) byte (e.g. 22 -> 0x22).
+        /// Matches official Android APK byte conversion via hex string parsing.
+        /// </summary>
+        public static byte DecimalToBcd(int val)
+        {
+            int clamped = Math.Clamp(val, 0, 99);
+            return (byte)(((clamped / 10) << 4) | (clamped % 10));
+        }
+
+        /// <summary>
+        /// Converts BCD byte to decimal integer (e.g. 0x22 -> 22).
+        /// </summary>
+        public static int BcdToDecimal(byte bcd)
+        {
+            return ((bcd >> 4) * 10) + (bcd & 0x0F);
+        }
+
+        /// <summary>
+        /// Builds the MCU state initialization / reset packet (0xF0 + 55555555555555).
+        /// Total length: 8 Bytes.
+        /// </summary>
+        public static byte[] BuildStateInitPacket()
+        {
+            return new byte[]
+            {
+                0xF0,
+                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55
+            };
+        }
+
+        /// <summary>
+        /// Builds the RTC time sync packet with BCD-encoded hours, minutes, and seconds (0xFF + BCD(HH) + BCD(MM) + BCD(SS) + 55555555).
         /// Total length: 8 Bytes.
         /// </summary>
         public static byte[] BuildRtcSyncPacket(DateTime time)
@@ -126,9 +157,9 @@ namespace WeekAquaWPF.Protocol
             return new byte[]
             {
                 0xFF,
-                (byte)time.Hour,
-                (byte)time.Minute,
-                (byte)time.Second,
+                DecimalToBcd(time.Hour),
+                DecimalToBcd(time.Minute),
+                DecimalToBcd(time.Second),
                 0x55, 0x55, 0x55, 0x55
             };
         }
@@ -161,6 +192,19 @@ namespace WeekAquaWPF.Protocol
             return new byte[]
             {
                 0xFB, 0xF9,
+                r, g, b, w,
+                0x55, 0x55
+            };
+        }
+
+        /// <summary>
+        /// Builds the Simple Sunrise/Sunset spectrum packet (0xFBEF + R + G + B + W + 5555).
+        /// </summary>
+        public static byte[] BuildSimpleSpectrumPacket(byte r, byte g, byte b, byte w)
+        {
+            return new byte[]
+            {
+                0xFB, 0xEF,
                 r, g, b, w,
                 0x55, 0x55
             };
@@ -204,7 +248,7 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Builds the dedicated Sunrise & Sunset timer packet (0xFEF9 + StartH + StartM + EndH + EndM + Type + RampIndex).
+        /// Builds the dedicated Sunrise & Sunset timer packet with BCD times (0xFEF9 + BCD(StartH) + BCD(StartM) + BCD(EndH) + BCD(EndM) + Type + RampIndex).
         /// RampIndex: 0 (0h), 1 (0.5h), 2 (1h), 3 (1.5h), 4 (2h), 5 (2.5h).
         /// Total length: 8 Bytes.
         /// </summary>
@@ -213,15 +257,17 @@ namespace WeekAquaWPF.Protocol
             return new byte[]
             {
                 0xFE, 0xF9,
-                startH, startM,
-                endH, endM,
+                DecimalToBcd(startH),
+                DecimalToBcd(startM),
+                DecimalToBcd(endH),
+                DecimalToBcd(endM),
                 (byte)(enabled ? 0x01 : 0x00),
                 (byte)Math.Clamp(rampIndex, (byte)0, (byte)5)
             };
         }
 
         /// <summary>
-        /// Builds the Ramp-up/down schedule slot time packet (0xFEF[Point] + StartH + StartM + EndH + EndM + 5555).
+        /// Builds the Ramp-up/down schedule slot time packet with BCD times (0xFEF[Point] + BCD(StartH) + BCD(StartM) + BCD(EndH) + BCD(EndM) + 5555).
         /// Point ID: 1 to 12.
         /// Total length: 8 Bytes.
         /// </summary>
@@ -241,10 +287,10 @@ namespace WeekAquaWPF.Protocol
             {
                 0xFE,
                 secondHeaderByte,
-                startH,
-                startM,
-                endH,
-                endM,
+                DecimalToBcd(startH),
+                DecimalToBcd(startM),
+                DecimalToBcd(endH),
+                DecimalToBcd(endM),
                 0x55, 0x55
             };
         }

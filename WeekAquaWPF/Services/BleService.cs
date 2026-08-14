@@ -109,14 +109,26 @@ namespace WeekAquaWPF.Services
             }
             catch { }
 
-            // Name fallback check
-            if (!hasUvChannel && !string.IsNullOrWhiteSpace(name))
+            bool is4ChannelRgbUv = false;
+
+            // Name fallback check & 4-Channel RGB/UV vs 5-Channel UV distinction
+            if (!string.IsNullOrWhiteSpace(name))
             {
                 string upperName = name.ToUpperInvariant();
-                if (upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("_M90") || upperName.Contains("_T90"))
+                bool containsUvKeyword = upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("_M90") || upperName.Contains("_T90") || upperName.Contains("MARINE") || upperName.Contains("CORAL") || upperName.Contains("_S");
+
+                if (containsUvKeyword)
                 {
-                    hasUvChannel = true;
-                    if (string.IsNullOrEmpty(modelCode)) modelCode = "5748";
+                    if (modelCode == "5746" || modelCode == "5747" || string.IsNullOrEmpty(modelCode))
+                    {
+                        is4ChannelRgbUv = true;
+                        if (string.IsNullOrEmpty(modelCode)) modelCode = "5746";
+                    }
+                    else if (!hasUvChannel)
+                    {
+                        hasUvChannel = true;
+                        if (string.IsNullOrEmpty(modelCode)) modelCode = "5748";
+                    }
                 }
             }
 
@@ -127,7 +139,8 @@ namespace WeekAquaWPF.Services
                 MacAddress = macStr,
                 Rssi = args.RawSignalStrengthInDBm,
                 ModelCode = modelCode,
-                HasUvChannel = hasUvChannel
+                HasUvChannel = hasUvChannel,
+                Is4ChannelRgbUv = is4ChannelRgbUv
             };
 
             DeviceDiscovered?.Invoke(deviceInfo);
@@ -270,8 +283,11 @@ namespace WeekAquaWPF.Services
                 LogMessage?.Invoke(LogDirection.Info, $"Successfully connected to {_currentDevice.Name}", null);
                 ConnectionStateChanged?.Invoke(true, "Connected");
 
-                // Step 4 of Handshake: Send initial RTC Sync packet
+                // Handshake Step 4: Send initial RTC Sync packet with BCD time
                 EnqueueWritePacket(WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now));
+
+                // Handshake Step 5: Send state initialization packet (0xF0)
+                EnqueueWritePacket(WeekAquaProtocol.BuildStateInitPacket());
 
                 return true;
             }

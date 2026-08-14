@@ -43,10 +43,13 @@ namespace WeekAquaWPF.ViewModels
             {
                 _selectedDevice = value;
                 OnPropertyChanged();
-                HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
                 string modelCode = _selectedDevice?.ModelCode ?? string.Empty;
+                Is4ChannelRgbUv = _selectedDevice?.Is4ChannelRgbUv ?? false;
                 HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
                 Has6Channel = _selectedDevice?.Has6Channel ?? false;
+                OnPropertyChanged(nameof(Channel4Name));
+                OnPropertyChanged(nameof(Channel4Color));
+                OnPropertyChanged(nameof(Channel4Header));
                 foreach (var slot in RampSlots)
                 {
                     slot.ModelCode = modelCode;
@@ -59,6 +62,25 @@ namespace WeekAquaWPF.ViewModels
                 }
             }
         }
+
+        private bool _is4ChannelRgbUv = false;
+
+        public bool Is4ChannelRgbUv
+        {
+            get => _is4ChannelRgbUv;
+            set
+            {
+                _is4ChannelRgbUv = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Channel4Name));
+                OnPropertyChanged(nameof(Channel4Color));
+                OnPropertyChanged(nameof(Channel4Header));
+            }
+        }
+
+        public string Channel4Name => Is4ChannelRgbUv ? "UV (4th Ch)" : "White";
+        public string Channel4Color => Is4ChannelRgbUv ? "#C084FC" : "#F59E0B";
+        public string Channel4Header => Is4ChannelRgbUv ? "UV Channel (395nm)" : "White Channel";
 
         public bool HasUvChannel
         {
@@ -402,9 +424,14 @@ namespace WeekAquaWPF.ViewModels
             );
 
             _bleService.EnqueueWritePacket(packet);
+
+            // Mandatory: Switch MCU to Mode 1 (Simple Sunrise/Sunset Mode)
+            byte[] modePacket = WeekAquaProtocol.BuildModePacket(1);
+            _bleService.EnqueueWritePacket(modePacket);
+
             string[] rampLabels = { "0h", "0.5h", "1h", "1.5h", "2h", "2.5h" };
             string label = SunriseRampIndex >= 0 && SunriseRampIndex < rampLabels.Length ? rampLabels[SunriseRampIndex] : $"{SunriseRampIndex}";
-            AddLog(LogDirection.Info, $"Enqueued Sunrise/Sunset packet ({SunriseStartStr} ~ {SunriseEndStr}, Ramp: {label}).");
+            AddLog(LogDirection.Info, $"Enqueued Sunrise/Sunset packet ({SunriseStartStr} ~ {SunriseEndStr}, Ramp: {label}) & activated Mode 1 (FDF1).");
             SaveCurrentDeviceConfig();
         }
 
@@ -641,12 +668,24 @@ namespace WeekAquaWPF.ViewModels
         {
             DiscoveredDevices.Add(new BleDeviceInfo
             {
-                Name = "WeekAqua L-Series [Virtual 4CH]",
+                Name = "WeekAqua L-Series [Virtual 4CH RGBW]",
                 BluetoothAddress = 0xAABBCC112233,
                 MacAddress = "AA:BB:CC:11:22:33",
                 ModelCode = "5746",
                 HasUvChannel = false,
+                Is4ChannelRgbUv = false,
                 Rssi = -45
+            });
+
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua T90_UV [Virtual 4CH RGB/UV]",
+                BluetoothAddress = 0xAABBCC112244,
+                MacAddress = "AA:BB:CC:11:22:44",
+                ModelCode = "5746",
+                HasUvChannel = false,
+                Is4ChannelRgbUv = true,
+                Rssi = -48
             });
 
             DiscoveredDevices.Add(new BleDeviceInfo
@@ -759,7 +798,7 @@ namespace WeekAquaWPF.ViewModels
             int enqueuedCount = 0;
             foreach (var slot in RampSlots)
             {
-                // 1. Time Range Packet (FEF1 ~ FEFC)
+                // 1. Time Range Packet (FEF1 ~ FEFC with BCD time)
                 byte[] timePacket = WeekAquaProtocol.BuildRampTimePacket(
                     slot.PointId,
                     (byte)slot.StartTime.Hours,
@@ -783,15 +822,26 @@ namespace WeekAquaWPF.ViewModels
                         slot.VioletByte
                     );
                     _bleService.EnqueueWritePacket(spectrumPacket);
-                    enqueuedCount += 2;
                 }
                 else
                 {
-                    enqueuedCount += 1;
+                    // Send 0 power spectrum for disabled slot to clear MCU slot state
+                    byte[] clearSpectrumPacket = WeekAquaProtocol.BuildRampSpectrumPacket(
+                        slot.PointId,
+                        0, 0, 0, 0, 0, 0
+                    );
+                    _bleService.EnqueueWritePacket(clearSpectrumPacket);
                 }
+                enqueuedCount += 2;
             }
 
-            AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot packets (Processing with 500ms queue delay).");
+            // 3. Mandatory: Switch MCU to Mode 2 (Advanced Custom Ramp Schedule Mode)
+            byte[] modePacket = WeekAquaProtocol.BuildModePacket(2);
+            _bleService.EnqueueWritePacket(modePacket);
+            enqueuedCount += 1;
+
+            AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot & Mode 2 (FDF2) packets (Processing with 500ms queue delay).");
+            SaveCurrentDeviceConfig();
         }
 
         private static TimeSpan AddHoursMod24(TimeSpan baseTime, double hoursToAdd)

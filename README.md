@@ -1,28 +1,58 @@
 # WeekAqua BLE Protocol Specification & C# WPF Controller
 
-WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스의 BLE(Bluetooth Low Energy) 통신 프로토콜 역공학 명세서 및 C# WPF 제어 프로그램입니다.
+WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바이스의 BLE(Bluetooth Low Energy) 통신 프로토콜 역공학 명세서 및 C# WPF 기반 Windows 전용 제어 프로그램입니다.
 
 > [!WARNING]
 > **⚠️ 주의사항 (Disclaimer)**  
-> 본 프로젝트는 안드로이드 앱 분석을 기반으로 작성된 **시험적(Experimental) 소프트웨어 및 연구용 명세서**입니다. 실제 실물 디바이스에서의 완벽한 동작 및 안전성을 보장하지 않으며, 본 프로그램 또는 명세서의 이용으로 인해 발생하는 어떠한 문제나 기기 이상에 대해서도 책임지지 않습니다.
+> 본 프로젝트는 안드로이드 공식 앱(`com.weekled.weekaquas`) 역공학 분석을 기반으로 작성된 **연구 및 시험용 소프트웨어**입니다. 실제 실물 디바이스에서의 완전한 동작 및 안전성을 보장하지 않으며, 본 프로그램 또는 명세서의 이용으로 인해 발생하는 기기 이상이나 데이터 손실에 대해 일체의 책임을 지지 않습니다.
+
+---
+
+## 🌟 핵심 특징 (Key Features)
+
+- 🕒 **BCD(Binary-Coded Decimal) 시간 동기화 & 타이머 제어**
+  - MCU 펌웨어 규격에 맞춘 24시간제 BCD 시간 인코딩(22시 $\rightarrow$ `0x22`, 18시 $\rightarrow$ `0x18`) 적용
+  - 원클릭 RTC 시계 동기화(`0xFF`) 및 연결 시 자동 동기화 & 상태 초기화(`0xF0`)
+- 🌅 **일출 & 일몰 모드 (Simple Sunrise & Sunset Mode)**
+  - 시작/종료 시각 및 0h ~ 2.5h Ramp 구간 선택 후 타이머 패킷(`FEF9`) 및 모드 활성화(`FDF1`) 자동 전송
+- 📅 **12-Point Ramp-up/down 고급 다중 스케줄 에디터 (Advanced Schedule Mode)**
+  - 하루 12개 시간 슬롯별 독립적인 RGBW/UV/Violet 스펙트럼 및 시간대 설정
+  - 비활성화 슬롯 자동 초기화 및 스케줄 모드 활성화(`FDF2`) 자동 연동
+  - 슬롯 시간 역전/중복 방지 실시간 유효성 검사 (Batch Validation)
+- ⚡ **실시간 안전 전력 상한선 (Max Power Limit) 가드**
+  - 안드로이드 공식 전력 공식(4CH, 5CH, 6CH, 7CH+) 적용
+  - $100.0\%$ 초과 시 색상비율을 보존하며 비례 축소하는 자동 정규화(Normalize) 기능
+- 🎨 **4채널 RGBW / 4채널 RGB/UV / 5채널 / 6채널 다중 라인업 자동 감지**
+  - 기기 모델 코드(`5745`~`5752`) 및 디바이스 네이밍(`_UV`, `MARINE`, `CORAL` 등) 자동 식별
+- 💾 **기기별 JSON 설정 영구 보관**
+  - MAC 주소별 색상, 팬 속도, 일출일몰, 스케줄 설정을 `%AppData%\WeekAquaWPF\device_config.json`에 자동 저장/로드
+- 🔌 **스마트 플러그 전력 모니터링**
+  - GATT Notify를 통한 누적 전력량(kWh) 실시간 디코딩 및 UI 표출
 
 ---
 
 ## 📂 프로젝트 구성
 
-- 🌅 **일출 & 일몰 모드 제어 (Sunrise & Sunset Timer Mode)**: 시작/종료 시각 및 0h~2.5h Ramp 시간 간격 선택 및 패킷(`FEF9`) 즉시 전송
-- 💾 **기기별 JSON 설정 자동 저장/로드**: 기기 MAC 주소별 설정값(RGBW, 팬, 일출일몰, 스케줄)을 로컬 JSON(`device_config.json`)으로 영구 보관
-- 🎨 **고대비 다크 테마 UI**: DataGrid 헤더 및 ComboBox 가독성을 최적화한 현대적인 UI 스타일링
-- 📄 **Reverse-Engineered Protocol Spec**: 안드로이드 APK 분석 기반 BLE 통신 명세서 보유 (`WeekAqua_BLE_Protocol_Specification.md`)
-- 💻 **[WeekAquaWPF/](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/)**: .NET WPF C# 기반 Windows 전용 조명/플러그 제어 애플리케이션
-  - 자세한 애플리케이션 가이드는 [WeekAquaWPF/README.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/README.md) 참조
+- 📄 **[WeekAqua_BLE_Protocol_Specification.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 APK 분석 기반의 상세 BLE 통신 프로토콜 명세서
+- 💻 **[WeekAquaWPF/](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션
+  - 상세 가이드: [WeekAquaWPF/README.md](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/README.md)
 
 ---
 
-## 🚀 빠른 시작
+## 🚀 빠른 시작 (Quick Start)
+
+### 요구 사항
+- **OS**: Windows 10 (버전 2004 / 빌드 19041 이상) 또는 Windows 11
+- **SDK**: .NET 10.0 SDK (또는 .NET 8.0/9.0)
+- **하드웨어**: Bluetooth 4.0 이상 지원 블루투스 어댑터
+
+### 실행 방법
 
 ```powershell
-# WPF 애플리케이션 빌드 및 실행
+# 프로젝트 디렉터리로 이동
 cd WeekAquaWPF
+
+# 빌드 및 실행
 dotnet run
 ```
+

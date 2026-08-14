@@ -15,33 +15,49 @@ namespace WeekAquaWPF.Protocol
                 byte byte0 = WeekAquaProtocol.PercentToByte(0.0);
                 if (byte0 != 0) throw new Exception($"PercentToByte(0) expected 0, got {byte0}");
 
-                // 2. Test RTC Sync Packet
+                // 2. Test DecimalToBcd & BcdToDecimal
+                byte bcd22 = WeekAquaProtocol.DecimalToBcd(22);
+                if (bcd22 != 0x22) throw new Exception($"DecimalToBcd(22) expected 0x22, got 0x{bcd22:X2}");
+                int dec22 = WeekAquaProtocol.BcdToDecimal(0x22);
+                if (dec22 != 22) throw new Exception($"BcdToDecimal(0x22) expected 22, got {dec22}");
+
+                // 3. Test State Init Packet
+                byte[] initPacket = WeekAquaProtocol.BuildStateInitPacket();
+                string initHex = WeekAquaProtocol.BytesToHexString(initPacket);
+                if (initHex != "F055555555555555") throw new Exception($"State Init packet mismatch: {initHex}");
+
+                // 4. Test RTC Sync Packet with BCD (14:30:15 -> 0x14, 0x30, 0x15)
                 var testTime = new DateTime(2026, 8, 12, 14, 30, 15);
                 byte[] rtcPacket = WeekAquaProtocol.BuildRtcSyncPacket(testTime);
                 string rtcHex = WeekAquaProtocol.BytesToHexString(rtcPacket);
-                if (rtcHex != "FF0E1E0F55555555") throw new Exception($"RTC packet mismatch: {rtcHex}");
+                if (rtcHex != "FF14301555555555") throw new Exception($"RTC packet mismatch: {rtcHex}");
 
-                // 3. Test Live Spectrum Packet
+                // 5. Test Live Spectrum Packet
                 byte[] spectrumPacket = WeekAquaProtocol.BuildLiveSpectrumPacket(235, 200, 150, 0);
                 string spectrumHex = WeekAquaProtocol.BytesToHexString(spectrumPacket);
                 if (spectrumHex != "FBF9EBC896005555") throw new Exception($"Live Spectrum packet mismatch: {spectrumHex}");
 
-                // 4. Test Cooling Fan Packet
+                // 6. Test Cooling Fan Packet
                 byte[] fanPacket = WeekAquaProtocol.BuildFanSpeedPacket(0);
                 string fanHex = WeekAquaProtocol.BytesToHexString(fanPacket);
                 if (fanHex != "FC00555555555555") throw new Exception($"Fan packet mismatch: {fanHex}");
 
-                // 5. Test Ramp Time Packet (Slot 1, 08:00 - 20:00)
+                // 7. Test Sunrise / Sunset Packet with BCD (08:00 ~ 18:00, Ramp 2 = 1h)
+                byte[] sunrisePacket = WeekAquaProtocol.BuildSunriseSunsetPacket(8, 0, 18, 0, 2);
+                string sunriseHex = WeekAquaProtocol.BytesToHexString(sunrisePacket);
+                if (sunriseHex != "FEF9080018000102") throw new Exception($"Sunrise/Sunset packet mismatch: {sunriseHex}");
+
+                // 8. Test Ramp Time Packet with BCD (Slot 1, 08:00 - 20:00)
                 byte[] rampTimePacket = WeekAquaProtocol.BuildRampTimePacket(1, 8, 0, 20, 0);
                 string rampTimeHex = WeekAquaProtocol.BytesToHexString(rampTimePacket);
-                if (rampTimeHex != "FEF1080014005555") throw new Exception($"Ramp time packet mismatch: {rampTimeHex}");
+                if (rampTimeHex != "FEF1080020005555") throw new Exception($"Ramp time packet mismatch: {rampTimeHex}");
 
-                // 6. Test Ramp Spectrum Packet (Slot 1)
+                // 9. Test Ramp Spectrum Packet (Slot 1)
                 byte[] rampSpectrumPacket = WeekAquaProtocol.BuildRampSpectrumPacket(1, 235, 200, 150, 0);
                 string rampSpectrumHex = WeekAquaProtocol.BytesToHexString(rampSpectrumPacket);
                 if (rampSpectrumHex != "FBF1EBC896005555") throw new Exception($"Ramp spectrum packet mismatch: {rampSpectrumHex}");
 
-                // 7. Test Power Parsing
+                // 10. Test Power Parsing
                 byte[] samplePowerBytes = WeekAquaProtocol.HexStringToBytes("0000000002FAF080"); // 50000000 rawVal
                 double kwh = WeekAquaProtocol.ParsePowerData(samplePowerBytes);
                 // 50000000 * 4.6566128730773926E-8 = ~2.328 => 2.3

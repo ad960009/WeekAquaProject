@@ -11,6 +11,8 @@ namespace WeekAquaWPF.Models
 
         public string ModelCode { get; set; } = string.Empty;
         public bool HasUvChannel { get; set; } = false;
+        public bool Is4ChannelRgbUv { get; set; } = false;
+
         public bool Has6Channel => ModelCode switch
         {
             "5749" or "5750" or "5751" or "5752" => true,
@@ -19,12 +21,14 @@ namespace WeekAquaWPF.Models
 
         public string ChannelTypeDescription => ModelCode switch
         {
-            "5746" or "5747" => "4-Ch (RGBW)",
+            "5746" or "5747" => Is4ChannelRgbUv ? "4-Ch (RGB/UV)" : "4-Ch (RGBW)",
             "5748" => "5-Ch (RGBW+UV)",
             "5749" => "6-Ch (Multi-Spectrum)",
             "5750" or "5751" or "5752" => "7+ Ch (Advanced)",
-            _ => HasUvChannel ? "5/6-Ch (UV/UVA)" : "4-Ch (RGBW)"
+            _ => Is4ChannelRgbUv ? "4-Ch (RGB/UV)" : (HasUvChannel ? "5/6-Ch (UV/UVA)" : "4-Ch (RGBW)")
         };
+
+        public string Channel4Label => Is4ChannelRgbUv ? "UV (Ultraviolet)" : "White (W)";
 
         public override string ToString()
         {
