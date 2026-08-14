@@ -324,8 +324,12 @@ namespace WeekAquaWPF.Models
 
             if (StartTime == EndTime)
             {
-                AddError(nameof(StartTimeStr), "Start time and end time cannot be identical for a single slot.");
-                AddError(nameof(EndTimeStr), "Start time and end time cannot be identical for a single slot.");
+                AddError(nameof(StartTimeStr), "Start time and end time cannot be identical.");
+                AddError(nameof(EndTimeStr), "Start time and end time cannot be identical.");
+            }
+            else if (StartTime > EndTime)
+            {
+                AddError(nameof(EndTimeStr), "End time must be greater than Start time (A single slot cannot cross midnight).");
             }
 
             double totalPower = TotalPowerPercent;

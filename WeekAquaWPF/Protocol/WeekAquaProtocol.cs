@@ -412,12 +412,22 @@ namespace WeekAquaWPF.Protocol
             time = TimeSpan.Zero;
             if (string.IsNullOrWhiteSpace(input)) return false;
 
-            input = input.Trim();
+            // 0. Explicit check for 24:00 midnight end
+            if (input == "24:00" || input == "24:0" || input == "24")
+            {
+                time = TimeSpan.FromHours(24);
+                return true;
+            }
 
             // 1. Try parsing exact standard time formats
             string[] formats = new[] { "h\\:mm", "hh\\:mm", "h\\:m", "hh\\:m", "H\\:mm", "HH\\:mm", "H\\:m", "HH\\:m" };
             if (TimeSpan.TryParseExact(input, formats, CultureInfo.InvariantCulture, out TimeSpan tsExact))
             {
+                if (tsExact.TotalHours == 24.0)
+                {
+                    time = TimeSpan.FromHours(24);
+                    return true;
+                }
                 int h = tsExact.Hours % 24;
                 if (h < 0) h += 24;
                 time = new TimeSpan(h, tsExact.Minutes, 0);
@@ -434,6 +444,11 @@ namespace WeekAquaWPF.Protocol
             // 3. If input is integer hour like "8", "08", "20"
             if (int.TryParse(input, out int hour) && hour >= 0 && hour <= 24)
             {
+                if (hour == 24)
+                {
+                    time = TimeSpan.FromHours(24);
+                    return true;
+                }
                 time = new TimeSpan(hour % 24, 0, 0);
                 return true;
             }
@@ -441,6 +456,11 @@ namespace WeekAquaWPF.Protocol
             // 4. Fallback general TimeSpan parse, clamping/normalizing Days into Hours
             if (TimeSpan.TryParse(input, CultureInfo.InvariantCulture, out TimeSpan tsGeneral))
             {
+                if (tsGeneral.TotalHours == 24.0)
+                {
+                    time = TimeSpan.FromHours(24);
+                    return true;
+                }
                 if (tsGeneral.Days > 0 && tsGeneral.Hours == 0 && tsGeneral.Minutes == 0)
                 {
                     time = new TimeSpan(tsGeneral.Days % 24, 0, 0);
@@ -458,10 +478,14 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
-        /// Formats TimeSpan to HH:mm string format with 24-hour modulo guarantee.
+        /// Formats TimeSpan to HH:mm string format with 24:00 support.
         /// </summary>
         public static string FormatTimeString(TimeSpan ts)
         {
+            if (ts.TotalHours == 24.0)
+            {
+                return "24:00";
+            }
             int totalH = (int)(ts.TotalHours % 24);
             if (totalH < 0) totalH += 24;
             return $"{totalH:D2}:{ts.Minutes:D2}";

@@ -993,15 +993,26 @@ namespace WeekAquaWPF.ViewModels
             }
 
             int enqueuedCount = 0;
+
+            // 0. Prepend Real-time Clock RTC Sync Packet (0xFF) so MCU internal time matches PC time
+            byte[] rtcPacket = WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now);
+            _bleService.EnqueueWritePacket(rtcPacket, $"RTC Clock Sync ({DateTime.Now:HH:mm:ss})");
+            enqueuedCount += 1;
+
             foreach (var slot in RampSlots)
             {
+                byte startH = (byte)slot.StartTime.TotalHours;
+                byte startM = (byte)slot.StartTime.Minutes;
+                byte endH = (byte)slot.EndTime.TotalHours;
+                byte endM = (byte)slot.EndTime.Minutes;
+
                 // 1. Time Range Packet (FEF1 ~ FEFC with BCD time)
                 byte[] timePacket = WeekAquaProtocol.BuildRampTimePacket(
                     slot.PointId,
-                    (byte)slot.StartTime.Hours,
-                    (byte)slot.StartTime.Minutes,
-                    (byte)slot.EndTime.Hours,
-                    (byte)slot.EndTime.Minutes,
+                    startH,
+                    startM,
+                    endH,
+                    endM,
                     slot.IsEnabled
                 );
                 string timeDesc = slot.IsEnabled 
@@ -1085,35 +1096,75 @@ namespace WeekAquaWPF.ViewModels
                 totalHours = 24.0 - (ScheduleSunriseTime - ScheduleSunsetTime).TotalHours;
             }
 
-            // Proportional photoperiod ramp checkpoints inside [Sunrise, Sunset]
-            double r1 = totalHours * 0.10; // Slot 1: Sunrise Start
-            double r2 = totalHours * 0.22; // Slot 2: Morning Ramp Up
-            double r3 = totalHours * 0.35; // Slot 3: Late Morning
-            double r4 = totalHours * 0.50; // Slot 4: Midday Peak 1
-            double r5 = totalHours * 0.65; // Slot 5: Afternoon Peak 2
-            double r6 = totalHours * 0.75; // Slot 6: Mid-Afternoon Ramp Down
-            double r7 = totalHours * 0.85; // Slot 7: Sunset Start
-            double r8 = totalHours * 0.92; // Slot 8: Golden Hour
-            double r9 = totalHours * 0.97; // Slot 9: Twilight Dusk
-            double r10 = totalHours;       // Slot 10: Sunset Complete -> Exactly at Sunset Time!
+            (TimeSpan Start, TimeSpan End)[] slotTimes;
 
-            TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
-
-            (TimeSpan Start, TimeSpan End)[] slotTimes = new (TimeSpan Start, TimeSpan End)[]
+            if (ScheduleSunsetTime < ScheduleSunriseTime)
             {
-                (t0, AddHoursMod24(t0, r1)),                                       // Slot 1: 🌅 Sunrise Start (20%)
-                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                    // Slot 2: 🌄 Morning Ramp Up (55%)
-                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                    // Slot 3: ☀️ Late Morning (85%)
-                (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),                    // Slot 4: ☀️ Noon Peak 1 (100%)
-                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                    // Slot 5: ☀️ Afternoon Peak 2 (100%)
-                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                    // Slot 6: 🌤️ Mid-Afternoon Down (85%)
-                (AddHoursMod24(t0, r6), AddHoursMod24(t0, r7)),                    // Slot 7: 🌇 Sunset Start (65%)
-                (AddHoursMod24(t0, r7), AddHoursMod24(t0, r8)),                    // Slot 8: 🌆 Golden Hour (40%)
-                (AddHoursMod24(t0, r8), AddHoursMod24(t0, r9)),                    // Slot 9: 🌆 Twilight Dusk (25%)
-                (AddHoursMod24(t0, r9), AddHoursMod24(t0, r10)),                   // Slot 10: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
-                (AddHoursMod24(t0, r10), AddHoursMod24(t0, r10 + 0.5)),            // Slot 11: 🌌 Dim Night Slope (5%)
-                (AddHoursMod24(t0, r10 + 0.5), t0)                                 // Slot 12: 🌑 Night Moonlight (4%) or Total Darkness (0%)
-            };
+                // Midnight-Crossing Photoperiod (e.g., 19:00 to 02:00)
+                // Split at 23:59 / 00:00 to ensure every slot strictly satisfies StartTime < EndTime for MCU validity
+                double hToday = 24.0 - ScheduleSunriseTime.TotalHours; // Remaining hours in current day
+                double hNext = ScheduleSunsetTime.TotalHours;          // Hours in next morning
+
+                TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
+                TimeSpan tMidnightEnd = TimeSpan.FromHours(24); // Formats as 24:00 (BCD 0x24 0x00) for gapless midnight transition
+                TimeSpan tZero = new TimeSpan(0, 0, 0);
+                TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
+                TimeSpan tNightSlopeEnd = AddHoursMod24(tSunset, 0.5);
+
+                slotTimes = new (TimeSpan Start, TimeSpan End)[]
+                {
+                    // Today Evening Slots 1~5 (Sunrise ~ 24:00)
+                    (t0, AddHoursMod24(t0, hToday * 0.20)),                                            // Slot 1: 🌅 Sunrise Start (20%)
+                    (AddHoursMod24(t0, hToday * 0.20), AddHoursMod24(t0, hToday * 0.40)),             // Slot 2: 🌄 Morning Ramp Up (55%)
+                    (AddHoursMod24(t0, hToday * 0.40), AddHoursMod24(t0, hToday * 0.65)),             // Slot 3: ☀️ Late Morning (85%)
+                    (AddHoursMod24(t0, hToday * 0.65), AddHoursMod24(t0, hToday * 0.85)),             // Slot 4: ☀️ Noon Peak 1 (100%)
+                    (AddHoursMod24(t0, hToday * 0.85), tMidnightEnd),                                 // Slot 5: ☀️ Peak to Midnight (100%) -> Ends at 24:00!
+
+                    // Next Day Early Morning Slots 6~10 (00:00 ~ Sunset)
+                    (tZero, AddHoursMod24(tZero, hNext * 0.35)),                                      // Slot 6: 🌤️ Post-Midnight Ramp Down (85%) -> Starts at 00:00!
+                    (AddHoursMod24(tZero, hNext * 0.35), AddHoursMod24(tZero, hNext * 0.65)),        // Slot 7: 🌇 Sunset Start (65%)
+                    (AddHoursMod24(tZero, hNext * 0.65), AddHoursMod24(tZero, hNext * 0.80)),        // Slot 8: 🌆 Golden Hour (40%)
+                    (AddHoursMod24(tZero, hNext * 0.80), AddHoursMod24(tZero, hNext * 0.90)),        // Slot 9: 🌆 Twilight Dusk (25%)
+                    (AddHoursMod24(tZero, hNext * 0.90), tSunset),                                    // Slot 10: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
+
+                    // Night Slope & Rest of Day
+                    (tSunset, tNightSlopeEnd),                                                        // Slot 11: 🌌 Dim Night Slope (5%)
+                    (tNightSlopeEnd, t0)                                                              // Slot 12: 🌑 Daytime/Night Rest (Moonlight 4% or 0%)
+                };
+            }
+            else
+            {
+                // Same-Day Photoperiod (e.g., 08:00 to 20:00)
+                TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
+                TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
+                TimeSpan tNightSlopeEnd = AddHoursMod24(tSunset, 0.5);
+
+                double r1 = totalHours * 0.10;
+                double r2 = totalHours * 0.22;
+                double r3 = totalHours * 0.35;
+                double r4 = totalHours * 0.50;
+                double r5 = totalHours * 0.65;
+                double r6 = totalHours * 0.75;
+                double r7 = totalHours * 0.85;
+                double r8 = totalHours * 0.92;
+                double r9 = totalHours * 0.97;
+
+                slotTimes = new (TimeSpan Start, TimeSpan End)[]
+                {
+                    (t0, AddHoursMod24(t0, r1)),
+                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
+                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
+                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),
+                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),
+                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),
+                    (AddHoursMod24(t0, r6), AddHoursMod24(t0, r7)),
+                    (AddHoursMod24(t0, r7), AddHoursMod24(t0, r8)),
+                    (AddHoursMod24(t0, r8), AddHoursMod24(t0, r9)),
+                    (AddHoursMod24(t0, r9), tSunset),
+                    (tSunset, tNightSlopeEnd),
+                    (tNightSlopeEnd, t0)
+                };
+            }
 
             for (int i = 0; i < RampSlots.Count && i < slotTimes.Length; i++)
             {
