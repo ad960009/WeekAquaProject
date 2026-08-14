@@ -101,3 +101,22 @@ dotnet build WeekAquaWPF.csproj
 dotnet run --project WeekAquaWPF.csproj
 ```
 
+---
+
+## 📦 단일 실행 파일(`.exe`) 원클릭 배포 (Single-File Publish)
+
+[publish.bat](file:///e:/android/APK/WeekAqua/WeekAquaProject/WeekAquaWPF/publish.bat)을 실행하면 단 한 번의 실행으로 **2가지 버전의 단일 실행 파일**이 자동 생성됩니다:
+
+```cmd
+# 탐색기에서 더블클릭하거나 터미널에서 실행
+publish.bat
+```
+
+### 생성되는 단일 실행 파일:
+1. **자체 포함(Self-Contained) 버전** (`publish/SelfContained/WeekAquaWPF.exe`):
+   - .NET 런타임이 설치되지 않은 다른 PC에서도 **추가 설치 없이 더블클릭만으로 실행** 가능 (~70MB)
+2. **프레임워크 종속(Framework-Dependent) 버전** (`publish/FrameworkDependent/WeekAquaWPF.exe`):
+   - .NET 런타임이 설치된 PC에서 사용하는 **초경량 단일 파일** (~25MB)
+
+
+

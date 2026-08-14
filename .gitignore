@@ -3,8 +3,10 @@
 # Build output & binaries
 **/[Bb]in/
 **/[Oo]bj/
+**/[Pp]ublish/
 [Bb]in/
 [Oo]bj/
+[Pp]ublish/
 [Ll]og/
 [Ll]ogs/
 [Tt]est[Rr]esult*/

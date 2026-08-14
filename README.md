@@ -46,13 +46,16 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
 - **SDK**: .NET 10.0 SDK (또는 .NET 8.0/9.0)
 - **하드웨어**: Bluetooth 4.0 이상 지원 블루투스 어댑터
 
-### 실행 방법
+### 실행 및 빌드
 
 ```powershell
 # 프로젝트 디렉터리로 이동
 cd WeekAquaWPF
 
-# 빌드 및 실행
+# 1. 개발 모드 빌드 및 실행
 dotnet run
+
+# 2. 단일 실행 파일(.exe) 원클릭 배포 (Self-Contained & Framework-Dependent 2종 자동 생성)
+publish.bat
 ```
 
