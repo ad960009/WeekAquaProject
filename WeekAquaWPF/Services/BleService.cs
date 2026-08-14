@@ -21,7 +21,7 @@ namespace WeekAquaWPF.Services
         private GattCharacteristic? _writeCharacteristic;
         private GattCharacteristic? _notifyCharacteristic;
 
-        private readonly ConcurrentQueue<byte[]> _writeQueue = new ConcurrentQueue<byte[]>();
+        private readonly ConcurrentQueue<(byte[] Data, string? Description)> _writeQueue = new ConcurrentQueue<(byte[], string?)>();
         private readonly SemaphoreSlim _queueSemaphore = new SemaphoreSlim(0);
         private CancellationTokenSource? _queueCts;
         private Task? _queueTask;
@@ -284,10 +284,10 @@ namespace WeekAquaWPF.Services
                 ConnectionStateChanged?.Invoke(true, "Connected");
 
                 // Handshake Step 4: Send initial RTC Sync packet with BCD time
-                EnqueueWritePacket(WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now));
+                EnqueueWritePacket(WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now), "Initial RTC Sync");
 
                 // Handshake Step 5: Send state initialization packet (0xF0)
-                EnqueueWritePacket(WeekAquaProtocol.BuildStateInitPacket());
+                EnqueueWritePacket(WeekAquaProtocol.BuildStateInitPacket(), "State Reset (F0)");
 
                 return true;
             }
@@ -316,10 +316,10 @@ namespace WeekAquaWPF.Services
         /// <summary>
         /// Enqueues a packet to be written with a 500ms delay between consecutive packets (Protocol requirement).
         /// </summary>
-        public void EnqueueWritePacket(byte[] packetData)
+        public void EnqueueWritePacket(byte[] packetData, string? description = null)
         {
             if (packetData == null || packetData.Length == 0) return;
-            _writeQueue.Enqueue(packetData);
+            _writeQueue.Enqueue((packetData, description));
             _queueSemaphore.Release();
         }
 
@@ -333,11 +333,15 @@ namespace WeekAquaWPF.Services
                     try
                     {
                         await _queueSemaphore.WaitAsync(_queueCts.Token);
-                        if (_writeQueue.TryDequeue(out byte[]? packetData))
+                        if (_writeQueue.TryDequeue(out var item))
                         {
+                            var packetData = item.Data;
+                            var desc = item.Description;
+                            string txLogText = !string.IsNullOrEmpty(desc) ? desc : $"Sent {packetData.Length} bytes";
+
                             if (_isVirtualConnected && packetData != null)
                             {
-                                LogMessage?.Invoke(LogDirection.TX, $"[Virtual] Sent {packetData.Length} bytes", packetData);
+                                LogMessage?.Invoke(LogDirection.TX, $"[Virtual] {txLogText}", packetData);
                                 await Task.Delay(500, _queueCts.Token);
                             }
                             else if (IsConnected && _writeCharacteristic != null && packetData != null)
@@ -355,16 +359,16 @@ namespace WeekAquaWPF.Services
                                     var status = await _writeCharacteristic.WriteValueWithResultAsync(buffer, writeOption);
                                     if (status.Status == GattCommunicationStatus.Success)
                                     {
-                                        LogMessage?.Invoke(LogDirection.TX, $"Sent {packetData.Length} bytes", packetData);
+                                        LogMessage?.Invoke(LogDirection.TX, txLogText, packetData);
                                     }
                                     else
                                     {
-                                        LogMessage?.Invoke(LogDirection.Error, $"Write failed: {status.Status}", packetData);
+                                        LogMessage?.Invoke(LogDirection.Error, $"Write failed: {status.Status} ({txLogText})", packetData);
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    LogMessage?.Invoke(LogDirection.Error, $"Write exception: {ex.Message}", packetData);
+                                    LogMessage?.Invoke(LogDirection.Error, $"Write exception: {ex.Message} ({txLogText})", packetData);
                                 }
 
                                 // Protocol Requirement: 500ms delay between write packets to prevent packet drop

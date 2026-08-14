@@ -571,6 +571,8 @@ namespace WeekAquaWPF.ViewModels
                 _greenPercent = config.GreenPercent;
                 _bluePercent = config.BluePercent;
                 _whitePercent = config.WhitePercent;
+                _uvPercent = config.UvPercent;
+                _violetPercent = config.VioletPercent;
                 _fanSpeedPercent = config.FanSpeedPercent;
                 _autoSendLiveSpectrum = config.AutoSendLiveSpectrum;
                 SunriseStartStr = config.SunriseStartStr;
@@ -581,12 +583,16 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged(nameof(GreenPercent));
                 OnPropertyChanged(nameof(BluePercent));
                 OnPropertyChanged(nameof(WhitePercent));
+                OnPropertyChanged(nameof(UvPercent));
+                OnPropertyChanged(nameof(VioletPercent));
                 OnPropertyChanged(nameof(FanSpeedPercent));
                 OnPropertyChanged(nameof(AutoSendLiveSpectrum));
                 OnPropertyChanged(nameof(RedByte));
                 OnPropertyChanged(nameof(GreenByte));
                 OnPropertyChanged(nameof(BlueByte));
                 OnPropertyChanged(nameof(WhiteByte));
+                OnPropertyChanged(nameof(UvByte));
+                OnPropertyChanged(nameof(VioletByte));
                 OnPropertyChanged(nameof(FanByte));
 
                 if (config.RampSlots != null && config.RampSlots.Count > 0)
@@ -625,6 +631,8 @@ namespace WeekAquaWPF.ViewModels
                 GreenPercent = GreenPercent,
                 BluePercent = BluePercent,
                 WhitePercent = WhitePercent,
+                UvPercent = UvPercent,
+                VioletPercent = VioletPercent,
                 FanSpeedPercent = FanSpeedPercent,
                 AutoSendLiveSpectrum = AutoSendLiveSpectrum,
                 SunriseStartStr = SunriseStartStr,
@@ -739,6 +747,7 @@ namespace WeekAquaWPF.ViewModels
 
         private void DisconnectDevice()
         {
+            SaveCurrentDeviceConfig();
             _bleService.Disconnect();
         }
 
@@ -753,19 +762,21 @@ namespace WeekAquaWPF.ViewModels
         private void SendLiveSpectrum()
         {
             byte[] packet = WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
-            _bleService.EnqueueWritePacket(packet);
+            _bleService.EnqueueWritePacket(packet, "Live Spectrum (FBF9)");
+            SaveCurrentDeviceConfig();
         }
 
         private void SendFanSpeed()
         {
             byte[] packet = WeekAquaProtocol.BuildFanSpeedPacket(FanByte);
-            _bleService.EnqueueWritePacket(packet);
+            _bleService.EnqueueWritePacket(packet, $"Fan Speed ({FanSpeedPercent}%)");
+            SaveCurrentDeviceConfig();
         }
 
         private void SyncRtcTime()
         {
             byte[] packet = WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now);
-            _bleService.EnqueueWritePacket(packet);
+            _bleService.EnqueueWritePacket(packet, "RTC Time Sync (FF)");
             AddLog(LogDirection.Info, "Enqueued RTC Time Sync packet.");
         }
 
@@ -774,7 +785,7 @@ namespace WeekAquaWPF.ViewModels
             if (modeParam != null && int.TryParse(modeParam.ToString(), out int modeId))
             {
                 byte[] packet = WeekAquaProtocol.BuildModePacket(modeId);
-                _bleService.EnqueueWritePacket(packet);
+                _bleService.EnqueueWritePacket(packet, $"Mode {modeId} Select (FD)");
                 AddLog(LogDirection.Info, $"Enqueued Mode {modeId} packet.");
             }
         }
@@ -807,7 +818,10 @@ namespace WeekAquaWPF.ViewModels
                     (byte)slot.EndTime.Minutes,
                     slot.IsEnabled
                 );
-                _bleService.EnqueueWritePacket(timePacket);
+                string timeDesc = slot.IsEnabled 
+                    ? $"Slot #{slot.PointId} Time ({slot.StartTimeStr} ~ {slot.EndTimeStr})" 
+                    : $"Slot #{slot.PointId} Time (Disabled / Clear)";
+                _bleService.EnqueueWritePacket(timePacket, timeDesc);
 
                 // 2. Spectrum Packet (FBF1 ~ FBFC)
                 if (slot.IsEnabled)
@@ -821,7 +835,8 @@ namespace WeekAquaWPF.ViewModels
                         slot.UvByte,
                         slot.VioletByte
                     );
-                    _bleService.EnqueueWritePacket(spectrumPacket);
+                    string specDesc = $"Slot #{slot.PointId} Spectrum (R:{slot.RedPercent}% G:{slot.GreenPercent}% B:{slot.BluePercent}% W:{slot.WhitePercent}%)";
+                    _bleService.EnqueueWritePacket(spectrumPacket, specDesc);
                 }
                 else
                 {
@@ -830,14 +845,14 @@ namespace WeekAquaWPF.ViewModels
                         slot.PointId,
                         0, 0, 0, 0, 0, 0
                     );
-                    _bleService.EnqueueWritePacket(clearSpectrumPacket);
+                    _bleService.EnqueueWritePacket(clearSpectrumPacket, $"Slot #{slot.PointId} Spectrum (Clear 0W)");
                 }
                 enqueuedCount += 2;
             }
 
             // 3. Mandatory: Switch MCU to Mode 2 (Advanced Custom Ramp Schedule Mode)
             byte[] modePacket = WeekAquaProtocol.BuildModePacket(2);
-            _bleService.EnqueueWritePacket(modePacket);
+            _bleService.EnqueueWritePacket(modePacket, "Activate Mode 2 (FDF2)");
             enqueuedCount += 1;
 
             AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot & Mode 2 (FDF2) packets (Processing with 500ms queue delay).");
@@ -901,6 +916,7 @@ namespace WeekAquaWPF.ViewModels
             {
                 var times = slotTimes[i];
                 var slot = RampSlots[i];
+                slot.IsEnabled = true;
                 slot.StartTime = times.Start;
                 slot.EndTime = times.End;
                 slot.Validate();
@@ -919,15 +935,39 @@ namespace WeekAquaWPF.ViewModels
         {
             Application.Current?.Dispatcher.Invoke(() =>
             {
-                foreach (var d in DiscoveredDevices)
+                var existing = DiscoveredDevices.FirstOrDefault(d => d.BluetoothAddress == device.BluetoothAddress);
+                if (existing != null)
                 {
-                    if (d.BluetoothAddress == device.BluetoothAddress)
+                    existing.Rssi = device.Rssi;
+
+                    // Update name if new valid name is discovered or if previous name was Unknown
+                    if (!string.IsNullOrWhiteSpace(device.Name) && device.Name != "Unknown BLE Device")
                     {
-                        d.Rssi = device.Rssi;
-                        return;
+                        if (string.IsNullOrWhiteSpace(existing.Name) || existing.Name == "Unknown BLE Device" || existing.Name != device.Name)
+                        {
+                            existing.Name = device.Name;
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(existing.ModelCode) && !string.IsNullOrEmpty(device.ModelCode))
+                    {
+                        existing.ModelCode = device.ModelCode;
+                    }
+
+                    if (!existing.HasUvChannel && device.HasUvChannel)
+                    {
+                        existing.HasUvChannel = device.HasUvChannel;
+                    }
+
+                    if (!existing.Is4ChannelRgbUv && device.Is4ChannelRgbUv)
+                    {
+                        existing.Is4ChannelRgbUv = device.Is4ChannelRgbUv;
                     }
                 }
-                DiscoveredDevices.Add(device);
+                else
+                {
+                    DiscoveredDevices.Add(device);
+                }
             });
         }
 
@@ -938,6 +978,13 @@ namespace WeekAquaWPF.ViewModels
                 IsConnected = connected;
                 ConnectionStatusText = message;
                 CommandManager.InvalidateRequerySuggested();
+
+                if (connected && SelectedDevice != null)
+                {
+                    LoadDeviceConfig(SelectedDevice.MacAddress);
+                    _appSettings.LastConnectedMac = SelectedDevice.MacAddress;
+                    SettingsManager.SaveSettings(_appSettings);
+                }
             });
         }
 
@@ -987,6 +1034,7 @@ namespace WeekAquaWPF.ViewModels
 
         public void Dispose()
         {
+            SaveCurrentDeviceConfig();
             _bleService.Dispose();
         }
     }

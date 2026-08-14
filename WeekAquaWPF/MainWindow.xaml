@@ -198,274 +198,375 @@
                 </StackPanel>
             </Grid>
         </Border>
-
         <!-- Content Area -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="420"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="420" MinWidth="340"/>
+                <!-- Vertical GridSplitter Bar between Left & Right panels -->
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*" MinWidth="500"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Panel (Device Scan + Manual Spectrum + Plug Power) -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,8,0">
-                <StackPanel>
-                    <!-- 1. BLE Connection Card -->
-                    <Border Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <TextBlock Text="📶 Bluetooth Device Scanner" FontSize="16" FontWeight="Bold" Foreground="#93C5FD" Margin="0,0,0,12"/>
-                            
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Content="🔍 Scan" Command="{Binding ScanCommand}"/>
-                                <Button Grid.Column="1" Content="⚡ Connect" Command="{Binding ConnectCommand}"/>
-                                <Button Grid.Column="2" Content="❌ Disconnect" Command="{Binding DisconnectCommand}" Background="#EF4444"/>
-                            </Grid>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <!-- 1. Top Bluetooth Scanner Card -->
+                    <RowDefinition Height="220" MinHeight="140"/>
+                    <!-- Horizontal GridSplitter Bar for resizing Bluetooth scanner height -->
+                    <RowDefinition Height="8"/>
+                    <!-- 2. Bottom Scrollable Control Cards (Live Spectrum, Presets, Timers, Meter) -->
+                    <RowDefinition Height="*" MinHeight="200"/>
+                </Grid.RowDefinitions>
 
-                            <ListBox ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDevice}"
-                                     Height="110" Background="#18181B" BorderBrush="#3F3F46" Foreground="#F4F4F5"
-                                     Margin="0,4,0,0">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="4,2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
+                <!-- 1. BLE Connection Card -->
+                <Border Grid.Row="0" Style="{StaticResource CardPanel}" Margin="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="📶 Bluetooth Device Scanner" FontSize="16" FontWeight="Bold" Foreground="#93C5FD" Margin="0,0,0,8"/>
+                        
+                        <Grid Grid.Row="1" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Content="🔍 Scan" Command="{Binding ScanCommand}"/>
+                            <Button Grid.Column="1" Content="⚡ Connect" Command="{Binding ConnectCommand}"/>
+                            <Button Grid.Column="2" Content="❌ Disconnect" Command="{Binding DisconnectCommand}" Background="#EF4444"/>
+                        </Grid>
+
+                        <ListBox Grid.Row="2" ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDevice}"
+                                 Background="#18181B" BorderBrush="#3F3F46" Foreground="#F4F4F5">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="4,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
-                                                <TextBlock Text="{Binding MacAddress}" FontSize="11" Foreground="#A1A1AA"/>
+                                                <TextBlock Text="{Binding ChannelTypeDescription, StringFormat=' ({0})'}" FontSize="11" Foreground="#A78BFA" VerticalAlignment="Center" Margin="4,0,0,0"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding Rssi, StringFormat='{}{0} dBm'}" FontSize="11" Foreground="#34D399" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </StackPanel>
-                    </Border>
+                                            <TextBlock Text="{Binding MacAddress}" FontSize="11" Foreground="#A1A1AA"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding Rssi, StringFormat='{}{0} dBm'}" FontSize="11" Foreground="#34D399" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
 
-                    <!-- 2. Live Spectrum Control Card -->
-                    <Border Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <Grid Margin="0,0,0,12">
-                                <TextBlock Text="🎨 Live Spectrum Control (FBF9)" FontSize="16" FontWeight="Bold" Foreground="#F472B6"/>
-                                <CheckBox Content="Auto-Send" IsChecked="{Binding AutoSendLiveSpectrum}" Foreground="#A1A1AA" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                            </Grid>
+                <!-- Horizontal GridSplitter Bar for Left Panel Bluetooth Scanner -->
+                <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                              Background="#18181B" ResizeBehavior="PreviousAndNext" Cursor="SizeNS">
+                    <GridSplitter.Template>
+                        <ControlTemplate TargetType="GridSplitter">
+                            <Border Background="#27272A" CornerRadius="4" Margin="0,2">
+                                <Rectangle Height="2" Width="40" Fill="#71717A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </GridSplitter.Template>
+                </GridSplitter>
 
-                            <!-- Weighted Total Power Load Meter -->
-                            <Border Background="#18181B" CornerRadius="4" Padding="8,4" Margin="0,0,0,8" BorderBrush="#3F3F46" BorderThickness="1">
-                                <Grid>
-                                    <TextBlock Text="⚡ Total Weighted Power Load:" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center"/>
-                                    <TextBlock HorizontalAlignment="Right" FontSize="11" FontWeight="Bold" VerticalAlignment="Center">
-                                        <Run Text="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" Foreground="#F59E0B"/>
-                                        <Run Text="/ 100.0% Max" Foreground="#71717A"/>
+                <!-- 2. Bottom Scrollable Panel (Manual Spectrum, Presets, Sunrise/Sunset, Energy Meter) -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
+                    <StackPanel>
+                        <!-- 2. Live Spectrum Control Card -->
+                        <Border Style="{StaticResource CardPanel}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,12">
+                                    <TextBlock Text="🎨 Live Spectrum Control (FBF9)" FontSize="16" FontWeight="Bold" Foreground="#F472B6"/>
+                                    <CheckBox Content="Auto-Send" IsChecked="{Binding AutoSendLiveSpectrum}" Foreground="#A1A1AA" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Weighted Total Power Load Meter -->
+                                <Border Background="#18181B" CornerRadius="4" Padding="8,4" Margin="0,0,0,8" BorderBrush="#3F3F46" BorderThickness="1">
+                                    <Grid>
+                                        <TextBlock Text="⚡ Total Weighted Power Load:" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                                        <TextBlock HorizontalAlignment="Right" FontSize="11" FontWeight="Bold" VerticalAlignment="Center">
+                                            <Run Text="{Binding TotalPowerPercent, Mode=OneWay, StringFormat='{}{0:0.0}%'}" Foreground="#F59E0B"/>
+                                            <Run Text="/ 100.0% Max" Foreground="#71717A"/>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Red Channel -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Red" Foreground="#EF4444" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding RedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding RedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding RedByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
                                     </TextBlock>
                                 </Grid>
-                            </Border>
 
-                            <!-- Red Channel -->
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Red" Foreground="#EF4444" FontWeight="Bold" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding RedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding RedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding RedByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- Green Channel -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Green" Foreground="#22C55E" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding GreenPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding GreenPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding GreenByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- Green Channel -->
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Green" Foreground="#10B981" FontWeight="Bold" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding GreenPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding GreenPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding GreenByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- Blue Channel -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Blue" Foreground="#3B82F6" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BluePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding BluePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding BlueByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- Blue Channel -->
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Blue" Foreground="#3B82F6" FontWeight="Bold" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding BluePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding BluePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding BlueByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- Channel 4: White / UV (Ultraviolet) -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding SelectedDevice.Channel4Label, FallbackValue='White'}" Foreground="#F4F4F5" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding WhitePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding WhitePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding WhiteByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- White / UV 4th Channel -->
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Channel4Name, TargetNullValue=White}" Foreground="{Binding Channel4Color, TargetNullValue=#F59E0B}" FontWeight="Bold" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding WhitePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding WhitePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding WhiteByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- UV/UVA Channel (Enabled for 5-Ch, 6-Ch & 7+ Ch models) -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="UV/UVA" Foreground="#8B5CF6" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding UvPercent, Mode=TwoWay}" IsEnabled="{Binding HasUvChannel}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding UvPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding UvByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- UV / UVA Channel (Enabled if detected on 5/6-ch models: 5748+) -->
-                            <Grid Margin="0,4" IsEnabled="{Binding HasUvChannel}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="65"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="UV/UVA" Foreground="#C084FC" FontWeight="Bold"/>
-                                </StackPanel>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding UvPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding UvPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding UvByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- Violet/UV2 Channel (Enabled for 6-Ch & 7+ Ch models) -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Violet" Foreground="#EC4899" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VioletPercent, Mode=TwoWay}" IsEnabled="{Binding Has6Channel}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding VioletPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding VioletByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- Violet / UV2 Channel (Enabled if detected on 6/10-ch models: 5749+) -->
-                            <Grid Margin="0,4" IsEnabled="{Binding Has6Channel}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="65"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Violet" Foreground="#E879F9" FontWeight="Bold"/>
-                                </StackPanel>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VioletPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding VioletPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding VioletByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <!-- Cooling Fan Speed -->
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Fan" Foreground="#06B6D4" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding FanSpeedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
+                                        <Run Text="{Binding FanSpeedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
+                                        <Run Text="{Binding FanByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
+                                    </TextBlock>
+                                </Grid>
 
-                            <!-- Cooling Fan Speed -->
-                            <Grid Margin="0,8,0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="60"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Fan" Foreground="#A7F3D0" FontWeight="Bold" VerticalAlignment="Center"/>
-                                <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding FanSpeedPercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
-                                    <Run Text="{Binding FanSpeedPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
-                                    <Run Text="{Binding FanByte, Mode=OneWay, StringFormat='(0x{0:X2})'}" Foreground="#A1A1AA"/>
-                                </TextBlock>
-                            </Grid>
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="🚀 Send Spectrum" Command="{Binding SendLiveSpectrumCommand}" Margin="0,0,4,0" Background="#EC4899"/>
+                                    <Button Grid.Column="1" Content="💨 Send Fan Speed" Command="{Binding SendFanSpeedCommand}" Margin="4,0,0,0" Background="#0891B2"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                            <Button Content="🚀 Send Live Spectrum Packet" Command="{Binding SendLiveSpectrumCommand}" Margin="0,8,0,0"/>
-                        </StackPanel>
-                    </Border>
+                        <!-- Spectrum Presets Card -->
+                        <Border Style="{StaticResource CardPanel}">
+                            <StackPanel>
+                                <TextBlock Text="🌈 App Spectrum Presets (RGBW / Marine)" FontSize="16" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,8"/>
+                                
+                                <!-- Freshwater Presets -->
+                                <TextBlock Text="🌱 Freshwater (수초/열대어):" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="🌿 Green" Command="{Binding ApplyPresetCommand}" CommandParameter="Green" Margin="0,0,2,0" Background="#16A34A" Padding="0,4"/>
+                                    <Button Grid.Column="1" Content="🍁 Red Plant" Command="{Binding ApplyPresetCommand}" CommandParameter="RedPlant" Margin="2,0,2,0" Background="#DC2626" Padding="0,4"/>
+                                    <Button Grid.Column="2" Content="🐠 Mixed" Command="{Binding ApplyPresetCommand}" CommandParameter="Mixed" Margin="2,0,0,0" Background="#D97706" Padding="0,4"/>
+                                </Grid>
 
-                    <!-- 3. Quick Control &amp; Clock Sync Card -->
-                    <Border Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <TextBlock Text="⏱️ Clock &amp; Mode Quick Actions" FontSize="16" FontWeight="Bold" Foreground="#FBBF24" Margin="0,0,0,12"/>
-                            
-                            <Button Content="🕒 Sync Smartphone RTC Clock (0xFF)" Command="{Binding SyncRtcTimeCommand}" Background="#8B5CF6" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="🦐 Shrimp" Command="{Binding ApplyPresetCommand}" CommandParameter="Shrimp" Margin="0,0,2,0" Background="#059669" Padding="0,4"/>
+                                    <Button Grid.Column="1" Content="🐟 Fish View" Command="{Binding ApplyPresetCommand}" CommandParameter="Fish" Margin="2,0,2,0" Background="#2563EB" Padding="0,4"/>
+                                    <Button Grid.Column="2" Content="💡 Max (100%)" Command="{Binding ApplyPresetCommand}" CommandParameter="Custom" Margin="2,0,0,0" Background="#4F46E5" Padding="0,4"/>
+                                </Grid>
 
-                            <TextBlock Text="Mode Selection (FDF1 ~ FDF5):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>
-                            <UniformGrid Columns="5" Margin="0,0,0,12">
-                                <Button Content="P1 (Green)" Command="{Binding SelectModeCommand}" CommandParameter="1" Background="#374151" Padding="2,4" FontSize="11"/>
-                                <Button Content="P2 (Red)" Command="{Binding SelectModeCommand}" CommandParameter="2" Background="#374151" Padding="2,4" FontSize="11"/>
-                                <Button Content="P3 (Fish)" Command="{Binding SelectModeCommand}" CommandParameter="3" Background="#374151" Padding="2,4" FontSize="11"/>
-                                <Button Content="P4 (Coral)" Command="{Binding SelectModeCommand}" CommandParameter="4" Background="#374151" Padding="2,4" FontSize="11"/>
-                                <Button Content="Custom" Command="{Binding SelectModeCommand}" CommandParameter="5" Background="#059669" Padding="2,4" FontSize="11"/>
-                            </UniformGrid>
+                                <!-- Marine / Reef Presets -->
+                                <TextBlock Text="🪸 Marine / Reef (해수/산호/6CH):" FontSize="11" Foreground="#A1A1AA" Margin="0,2,0,4"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="🌊 Coral AB+" Command="{Binding ApplyPresetCommand}" CommandParameter="CoralAB" Margin="0,0,2,0" Background="#0284C7" Padding="0,4"/>
+                                    <Button Grid.Column="1" Content="🪸 LPS Coral" Command="{Binding ApplyPresetCommand}" CommandParameter="LPSCoral" Margin="2,0,2,0" Background="#7C3AED" Padding="0,4"/>
+                                    <Button Grid.Column="2" Content="💎 SPS Coral" Command="{Binding ApplyPresetCommand}" CommandParameter="SPSCoral" Margin="2,0,0,0" Background="#9333EA" Padding="0,4"/>
+                                </Grid>
 
-                            <TextBlock Text="App Spectrum Presets (Quick Apply):" FontSize="12" Foreground="#A1A1AA" Margin="0,0,0,6"/>
-                            <WrapPanel Margin="0,0,0,0">
-                                <Button Content="🌱 Green Plant" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="GreenGrass" Background="#166534" Margin="0,0,4,4"/>
-                                <Button Content="🌺 Red Plant" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="RedGrass" Background="#991B1B" Margin="0,0,4,4"/>
-                                <Button Content="🐟 Fish/Mixed" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="FishMixed" Background="#1E40AF" Margin="0,0,4,4"/>
-                                <Button Content="🪸 Coral/Marine" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralMarine" Background="#5B21B6" Margin="0,0,4,4"/>
-                                <Button Content="🪸 Coral LPS" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralLps" Background="#6B21A8" Margin="0,0,4,4"/>
-                                <Button Content="💎 Coral SPS" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralSps" Background="#7E22CE" Margin="0,0,4,4"/>
-                                <Button Content="✨ Coral AB+" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="CoralAb" Background="#4C1D95" Margin="0,0,4,4"/>
-                                <Button Content="🐠 Marine FOT" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="MarineFot" Background="#1D4ED8" Margin="0,0,4,4"/>
-                                <Button Content="💥 Cycling Max" Command="{Binding ApplyPresetSpectrumCommand}" CommandParameter="AlgaeMax" Background="#9A3412" Margin="0,0,4,4"/>
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="🐠 Marine Fish" Command="{Binding ApplyPresetCommand}" CommandParameter="MarineFish" Margin="0,0,2,0" Background="#0D9488" Padding="0,4"/>
+                                    <Button Grid.Column="1" Content="🌙 Deep Blue" Command="{Binding ApplyPresetCommand}" CommandParameter="DeepBlue" Margin="2,0,2,0" Background="#1E40AF" Padding="0,4"/>
+                                    <Button Grid.Column="2" Content="🌑 Moonlight" Command="{Binding ApplyPresetCommand}" CommandParameter="Moonlight" Margin="2,0,0,0" Background="#312E81" Padding="0,4"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                    <!-- 4. Sunrise & Sunset Timer Card (FEF9) -->
-                    <Border Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <TextBlock Text="🌅 Sunrise &amp; Sunset Timer Mode (FEF9)" FontSize="16" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,12"/>
-                            
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,6,0">
-                                    <TextBlock Text="Start Time (On):" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SunriseStartStr, Mode=TwoWay}" Padding="6,4" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                    <TextBlock Text="End Time (Off):" FontSize="11" Foreground="#A1A1AA" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SunriseEndStr, Mode=TwoWay}" Padding="6,4" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46"/>
-                                </StackPanel>
-                            </Grid>
+                        <!-- 3. Quick Control & Clock Sync Card -->
+                        <Border Style="{StaticResource CardPanel}">
+                            <StackPanel>
+                                <TextBlock Text="⏱️ Clock &amp; Mode Quick Actions" FontSize="16" FontWeight="Bold" Foreground="#FBBF24" Margin="0,0,0,12"/>
+                                
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="P1 (Green)" Command="{Binding SelectModeCommand}" CommandParameter="1" Margin="0,0,2,0" Background="#16A34A" ToolTip="Preset 1 (Green/Sun)"/>
+                                    <Button Grid.Column="1" Content="P2 (Red)" Command="{Binding SelectModeCommand}" CommandParameter="2" Margin="2,0,2,0" Background="#DC2626" ToolTip="Preset 2 (Red Plant)"/>
+                                    <Button Grid.Column="2" Content="P3 (Mixed)" Command="{Binding SelectModeCommand}" CommandParameter="3" Margin="2,0,2,0" Background="#D97706" ToolTip="Preset 3 (Mixed)"/>
+                                    <Button Grid.Column="3" Content="P4 (Fish)" Command="{Binding SelectModeCommand}" CommandParameter="4" Margin="2,0,0,0" Background="#2563EB" ToolTip="Preset 4 (Fish)"/>
+                                </Grid>
 
-                            <TextBlock Text="Ramp Up/Down Duration:" FontSize="11" Foreground="#A1A1AA" Margin="0,4,0,4"/>
-                            <ComboBox SelectedIndex="{Binding SunriseRampIndex, Mode=TwoWay}" Background="#18181B" Foreground="#F4F4F5" Margin="0,0,0,8">
-                                <ComboBoxItem Content="0 h (Immediate On/Off)"/>
-                                <ComboBoxItem Content="0.5 h (30 mins Slope)"/>
-                                <ComboBoxItem Content="1 h (60 mins Slope)"/>
-                                <ComboBoxItem Content="1.5 h (90 mins Slope)"/>
-                                <ComboBoxItem Content="2 h (120 mins Slope)"/>
-                                <ComboBoxItem Content="2.5 h (150 mins Slope)"/>
-                            </ComboBox>
+                                <Button Content="🕒 Sync PC Clock (RTC 0xFF)" Command="{Binding SyncRtcCommand}" Background="#D97706" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Border>
 
-                            <Button Content="🌅 Apply Sunrise &amp; Sunset Timer" Command="{Binding SendSunriseSunsetCommand}" Background="#D97706" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Border>
+                        <!-- Sunrise & Sunset Timer Card -->
+                        <Border Style="{StaticResource CardPanel}">
+                            <StackPanel>
+                                <TextBlock Text="🌅 Sunrise &amp; Sunset Timer (FEF9)" FontSize="16" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,8"/>
+                                <TextBlock Text="간편 일출/일몰 모드: 시작/종료 시각과 Ramp 간격을 설정합니다." FontSize="11" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
-                    <!-- 4. Smart Plug Power Monitor Card -->
-                    <Border Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <TextBlock Text="⚡ Smart Plug Energy Meter" FontSize="16" FontWeight="Bold" Foreground="#34D399" Margin="0,0,0,8"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Live Power Consumption:" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding PowerKwh, StringFormat='{}{0:0.0} kWh'}" FontSize="20" FontWeight="Bold" Foreground="#10B981"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Start Time:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#F4F4F5"/>
+                                    <TextBox Grid.Column="1" Text="{Binding SunriseStartStr, UpdateSourceTrigger=PropertyChanged}" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46" Padding="6,4" ToolTip="Format: HH:mm (e.g. 08:00)"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="End Time:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#F4F4F5"/>
+                                    <TextBox Grid.Column="1" Text="{Binding SunriseEndStr, UpdateSourceTrigger=PropertyChanged}" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46" Padding="6,4" ToolTip="Format: HH:mm (e.g. 18:00)"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Ramp Time:" VerticalAlignment="Center" FontWeight="Bold" Foreground="#F4F4F5"/>
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding SunriseRampIndex}" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#3F3F46">
+                                        <ComboBoxItem Content="0 Hours (Instant)"/>
+                                        <ComboBoxItem Content="0.5 Hours (30 mins)"/>
+                                        <ComboBoxItem Content="1.0 Hours (60 mins)"/>
+                                        <ComboBoxItem Content="1.5 Hours (90 mins)"/>
+                                        <ComboBoxItem Content="2.0 Hours (120 mins)"/>
+                                        <ComboBoxItem Content="2.5 Hours (150 mins)"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Button Content="☀️ Set Sunrise &amp; Sunset Timer" Command="{Binding SendSunriseSunsetCommand}" Margin="0,8,0,0" Background="#D97706" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4. Smart Plug Power Monitor Card -->
+                        <Border Style="{StaticResource CardPanel}">
+                            <StackPanel>
+                                <TextBlock Text="⚡ Smart Plug Energy Meter" FontSize="16" FontWeight="Bold" Foreground="#34D399" Margin="0,0,0,8"/>
+                                <Grid>
+                                    <TextBlock Text="Accumulated Power:" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LiveKwh, StringFormat='{}{0:F2} kWh'}" FontSize="18" FontWeight="Bold" Foreground="#34D399" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Vertical GridSplitter Bar between Left & Right panels -->
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          Background="#18181B" ResizeBehavior="PreviousAndNext" Cursor="SizeWE">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="#27272A" CornerRadius="4" Margin="2,0">
+                            <Rectangle Width="2" Height="40" Fill="#71717A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
 
             <!-- Right Panel (Ramp Scheduler + Packet Terminal Log) -->
-            <Grid Grid.Column="1" Margin="8,0,0,0">
+            <Grid Grid.Column="2" Margin="4,0,0,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="2*"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="2*" MinHeight="250"/>
+                    <!-- Horizontal GridSplitter Bar between Schedule Editor & Packet Log -->
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="*" MinHeight="140"/>
                 </Grid.RowDefinitions>
 
                 <!-- Ramp Schedule Editor Card -->
@@ -543,8 +644,20 @@
                     </Grid>
                 </Border>
 
+                <!-- Horizontal GridSplitter Bar between Schedule Editor & Packet Log -->
+                <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                              Background="#18181B" ResizeBehavior="PreviousAndNext" Cursor="SizeNS">
+                    <GridSplitter.Template>
+                        <ControlTemplate TargetType="GridSplitter">
+                            <Border Background="#27272A" CornerRadius="4" Margin="0,2">
+                                <Rectangle Height="2" Width="40" Fill="#71717A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </GridSplitter.Template>
+                </GridSplitter>
+
                 <!-- BLE Packet Terminal Log Card -->
-                <Border Grid.Row="1" Style="{StaticResource CardPanel}" Margin="0,8,0,0">
+                <Border Grid.Row="2" Style="{StaticResource CardPanel}" Margin="0,0,0,0">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
