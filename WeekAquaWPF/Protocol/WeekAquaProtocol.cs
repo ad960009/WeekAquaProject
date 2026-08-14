@@ -24,11 +24,16 @@ namespace WeekAquaWPF.Protocol
             public static (double R, double G, double B, double W, double UV, double V) GreenGrass  => (75, 95, 38, 75, 10, 5); // 녹색 수초 모드
             public static (double R, double G, double B, double W, double UV, double V) RedGrass    => (95, 30, 65, 75, 15, 10); // 적색 수초 발색 모드
             public static (double R, double G, double B, double W, double UV, double V) FishMixed   => (70, 70, 70, 95, 5, 5);  // 어류/혼양 관상 모드
+            public static (double R, double G, double B, double W, double UV, double V) Shrimp      => (40, 90, 60, 80, 10, 5);  // 비쉬림프/생새우 관상 모드
+            public static (double R, double G, double B, double W, double UV, double V) Fish        => (80, 50, 85, 95, 10, 10); // 열대어 선명 발색 모드
+            public static (double R, double G, double B, double W, double UV, double V) Custom      => (100, 100, 100, 100, 100, 100); // 100% 피크 출력 모드
             public static (double R, double G, double B, double W, double UV, double V) CoralMarine => (10, 20, 95, 95, 60, 40); // 산호/해수 기본 모드
             public static (double R, double G, double B, double W, double UV, double V) CoralLps    => (15, 25, 90, 70, 50, 60); // LPS 연산호 특화 모드
             public static (double R, double G, double B, double W, double UV, double V) CoralSps    => (5, 15, 100, 60, 75, 85); // SPS 경산호 특화 모드
             public static (double R, double G, double B, double W, double UV, double V) CoralAb     => (10, 20, 100, 40, 80, 90); // Coral AB+ 형광 스펙트럼 모드
             public static (double R, double G, double B, double W, double UV, double V) MarineFot   => (50, 50, 85, 90, 25, 30); // FOT 해수어 관상 모드
+            public static (double R, double G, double B, double W, double UV, double V) DeepBlue   => (0, 10, 100, 20, 80, 95);  // 심해 딥블루 모드
+            public static (double R, double G, double B, double W, double UV, double V) Moonlight  => (0, 0, 25, 0, 15, 30);    // 은은한 달빛 야간 모드
             public static (double R, double G, double B, double W, double UV, double V) AlgaeMax    => (70, 65, 70, 55, 20, 15); // 최적 밸런스 피크 출력 모드
         }
 
@@ -396,6 +401,70 @@ namespace WeekAquaWPF.Protocol
                 sb.Append(bytes[i].ToString("X2"));
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Parses human-entered time strings (e.g. "08:00", "8:00", "8", "20:00", "20", "8:30") into a valid 24-hour TimeSpan (00:00:00 to 23:59:59).
+        /// Avoids .NET TimeSpan.TryParse pitfall where single digits parse as Days (e.g. "8" -> 8 days).
+        /// </summary>
+        public static bool TryParseTimeString(string? input, out TimeSpan time)
+        {
+            time = TimeSpan.Zero;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            input = input.Trim();
+
+            // 1. Try parsing exact standard time formats
+            string[] formats = new[] { "h\\:mm", "hh\\:mm", "h\\:m", "hh\\:m", "H\\:mm", "HH\\:mm", "H\\:m", "HH\\:m" };
+            if (TimeSpan.TryParseExact(input, formats, CultureInfo.InvariantCulture, out TimeSpan tsExact))
+            {
+                int h = tsExact.Hours % 24;
+                if (h < 0) h += 24;
+                time = new TimeSpan(h, tsExact.Minutes, 0);
+                return true;
+            }
+
+            // 2. Try DateTime parsing for formats like "8:00 AM", "20:00", "8:00"
+            if (DateTime.TryParseExact(input, new[] { "H:mm", "HH:mm", "h:mm", "hh:mm", "h:mm tt", "hh:mm tt", "H", "HH" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt))
+            {
+                time = new TimeSpan(dt.Hour, dt.Minute, 0);
+                return true;
+            }
+
+            // 3. If input is integer hour like "8", "08", "20"
+            if (int.TryParse(input, out int hour) && hour >= 0 && hour <= 24)
+            {
+                time = new TimeSpan(hour % 24, 0, 0);
+                return true;
+            }
+
+            // 4. Fallback general TimeSpan parse, clamping/normalizing Days into Hours
+            if (TimeSpan.TryParse(input, CultureInfo.InvariantCulture, out TimeSpan tsGeneral))
+            {
+                if (tsGeneral.Days > 0 && tsGeneral.Hours == 0 && tsGeneral.Minutes == 0)
+                {
+                    time = new TimeSpan(tsGeneral.Days % 24, 0, 0);
+                }
+                else
+                {
+                    int h = (int)(tsGeneral.TotalHours % 24);
+                    if (h < 0) h += 24;
+                    time = new TimeSpan(h, tsGeneral.Minutes, 0);
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Formats TimeSpan to HH:mm string format with 24-hour modulo guarantee.
+        /// </summary>
+        public static string FormatTimeString(TimeSpan ts)
+        {
+            int totalH = (int)(ts.TotalHours % 24);
+            if (totalH < 0) totalH += 24;
+            return $"{totalH:D2}:{ts.Minutes:D2}";
         }
 
         /// <summary>

@@ -115,19 +115,24 @@ namespace WeekAquaWPF.Services
             if (!string.IsNullOrWhiteSpace(name))
             {
                 string upperName = name.ToUpperInvariant();
-                bool containsUvKeyword = upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("_M90") || upperName.Contains("_T90") || upperName.Contains("MARINE") || upperName.Contains("CORAL") || upperName.Contains("_S");
+                bool isMultiChannel = modelCode == "5748" || modelCode == "5749" || modelCode == "5750" || modelCode == "5751" || modelCode == "5752" ||
+                                      upperName.Contains("5CH") || upperName.Contains("6CH") || upperName.Contains("10CH") || upperName.Contains("MARINE") || upperName.Contains("CORAL") || upperName.Contains("A-SERIES") || upperName.Contains("A430");
 
-                if (containsUvKeyword)
+                if (!isMultiChannel)
                 {
-                    if (modelCode == "5746" || modelCode == "5747" || string.IsNullOrEmpty(modelCode))
+                    bool isRgbUv = upperName.Contains("UV") || upperName.Contains("UVA") || upperName.Contains("RGB/UV") || upperName.Contains("RGB-UV") || upperName.Contains("RGB_UV") ||
+                                   upperName.Contains("M800") || upperName.Contains("M600") || upperName.Contains("M450") || upperName.Contains("M400") || upperName.Contains("M900") || upperName.Contains("M1200") || upperName.Contains("M-PRO") || upperName.Contains("M PRO") || upperName.Contains("M_PRO") || upperName.StartsWith("M") ||
+                                   upperName.Contains("S400") || upperName.Contains("S450") || upperName.Contains("S600") || upperName.Contains("S800") || upperName.Contains("S900") || upperName.Contains("S1200") || upperName.Contains("S-PRO") || upperName.Contains("S PRO") || upperName.Contains("S_PRO") ||
+                                   upperName.Contains("T90") || upperName.Contains("T45") || upperName.Contains("T60") || upperName.Contains("T80") || upperName.Contains("T120") ||
+                                   upperName.Contains("Z400") || upperName.Contains("Z600") || upperName.Contains("Z800") ||
+                                   upperName.Contains("P600") || upperName.Contains("P800") || upperName.Contains("P900") || upperName.Contains("P1200") ||
+                                   System.Text.RegularExpressions.Regex.IsMatch(upperName, @"\b[MSTZP][0-9]{2,4}");
+
+                    if (isRgbUv)
                     {
                         is4ChannelRgbUv = true;
+                        hasUvChannel = false;
                         if (string.IsNullOrEmpty(modelCode)) modelCode = "5746";
-                    }
-                    else if (!hasUvChannel)
-                    {
-                        hasUvChannel = true;
-                        if (string.IsNullOrEmpty(modelCode)) modelCode = "5748";
                     }
                 }
             }

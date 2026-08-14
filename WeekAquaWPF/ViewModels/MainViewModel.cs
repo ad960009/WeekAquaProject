@@ -311,30 +311,62 @@ namespace WeekAquaWPF.ViewModels
         // Sunrise & Sunset Mode Properties
         private TimeSpan _sunriseStartTime = new TimeSpan(8, 0, 0);
         private TimeSpan _sunriseEndTime = new TimeSpan(18, 0, 0);
-        private int _sunriseRampIndex = 2; // Default 1h (Index 2)
+        private string _sunriseStartStr = "08:00";
+        private string _sunriseEndStr = "18:00";
+        private int _sunriseRampIndex = 2; // Default 1.0 Hour ramp
 
         public TimeSpan SunriseStartTime
         {
             get => _sunriseStartTime;
-            set { _sunriseStartTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(SunriseStartStr)); }
+            set
+            {
+                _sunriseStartTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                _sunriseStartStr = WeekAquaProtocol.FormatTimeString(_sunriseStartTime);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SunriseStartStr));
+            }
         }
 
         public TimeSpan SunriseEndTime
         {
             get => _sunriseEndTime;
-            set { _sunriseEndTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(SunriseEndStr)); }
+            set
+            {
+                _sunriseEndTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                _sunriseEndStr = WeekAquaProtocol.FormatTimeString(_sunriseEndTime);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SunriseEndStr));
+            }
         }
 
         public string SunriseStartStr
         {
-            get => _sunriseStartTime.ToString(@"hh\:mm");
-            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) SunriseStartTime = ts; }
+            get => _sunriseStartStr;
+            set
+            {
+                _sunriseStartStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
+                {
+                    _sunriseStartTime = ts;
+                    OnPropertyChanged(nameof(SunriseStartTime));
+                }
+            }
         }
 
         public string SunriseEndStr
         {
-            get => _sunriseEndTime.ToString(@"hh\:mm");
-            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) SunriseEndTime = ts; }
+            get => _sunriseEndStr;
+            set
+            {
+                _sunriseEndStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
+                {
+                    _sunriseEndTime = ts;
+                    OnPropertyChanged(nameof(SunriseEndTime));
+                }
+            }
         }
 
         public int SunriseRampIndex
@@ -346,29 +378,61 @@ namespace WeekAquaWPF.ViewModels
         // Schedule Editor Quick Auto-Calculator Properties
         private TimeSpan _scheduleSunriseTime = new TimeSpan(8, 0, 0);
         private TimeSpan _scheduleSunsetTime = new TimeSpan(20, 0, 0);
+        private string _scheduleSunriseStr = "08:00";
+        private string _scheduleSunsetStr = "20:00";
 
         public TimeSpan ScheduleSunriseTime
         {
             get => _scheduleSunriseTime;
-            set { _scheduleSunriseTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(ScheduleSunriseStr)); }
+            set
+            {
+                _scheduleSunriseTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                _scheduleSunriseStr = WeekAquaProtocol.FormatTimeString(_scheduleSunriseTime);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ScheduleSunriseStr));
+            }
         }
 
         public TimeSpan ScheduleSunsetTime
         {
             get => _scheduleSunsetTime;
-            set { _scheduleSunsetTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(ScheduleSunsetStr)); }
+            set
+            {
+                _scheduleSunsetTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                _scheduleSunsetStr = WeekAquaProtocol.FormatTimeString(_scheduleSunsetTime);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ScheduleSunsetStr));
+            }
         }
 
         public string ScheduleSunriseStr
         {
-            get => _scheduleSunriseTime.ToString(@"hh\:mm");
-            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) ScheduleSunriseTime = ts; }
+            get => _scheduleSunriseStr;
+            set
+            {
+                _scheduleSunriseStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
+                {
+                    _scheduleSunriseTime = ts;
+                    OnPropertyChanged(nameof(ScheduleSunriseTime));
+                }
+            }
         }
 
         public string ScheduleSunsetStr
         {
-            get => _scheduleSunsetTime.ToString(@"hh\:mm");
-            set { if (TimeSpan.TryParse(value, out TimeSpan ts)) ScheduleSunsetTime = ts; }
+            get => _scheduleSunsetStr;
+            set
+            {
+                _scheduleSunsetStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
+                {
+                    _scheduleSunsetTime = ts;
+                    OnPropertyChanged(nameof(ScheduleSunsetTime));
+                }
+            }
         }
 
         // Commands
@@ -441,16 +505,20 @@ namespace WeekAquaWPF.ViewModels
             string key = presetName.ToString() ?? "";
             (double R, double G, double B, double W, double UV, double V) preset = key switch
             {
-                "GreenGrass" => WeekAquaProtocol.Presets.GreenGrass,
-                "RedGrass" => WeekAquaProtocol.Presets.RedGrass,
-                "FishMixed" => WeekAquaProtocol.Presets.FishMixed,
-                "CoralMarine" => WeekAquaProtocol.Presets.CoralMarine,
-                "CoralLps" => WeekAquaProtocol.Presets.CoralLps,
-                "CoralSps" => WeekAquaProtocol.Presets.CoralSps,
-                "CoralAb" => WeekAquaProtocol.Presets.CoralAb,
-                "MarineFot" => WeekAquaProtocol.Presets.MarineFot,
+                "Green" or "GreenGrass" => WeekAquaProtocol.Presets.GreenGrass,
+                "RedPlant" or "RedGrass" => WeekAquaProtocol.Presets.RedGrass,
+                "Mixed" or "FishMixed" => WeekAquaProtocol.Presets.FishMixed,
+                "Shrimp" => WeekAquaProtocol.Presets.Shrimp,
+                "Fish" => WeekAquaProtocol.Presets.Fish,
+                "Custom" => WeekAquaProtocol.Presets.Custom,
+                "CoralAB" or "CoralAb" or "CoralMarine" => WeekAquaProtocol.Presets.CoralAb,
+                "LPSCoral" or "CoralLps" => WeekAquaProtocol.Presets.CoralLps,
+                "SPSCoral" or "CoralSps" => WeekAquaProtocol.Presets.CoralSps,
+                "MarineFish" or "MarineFot" => WeekAquaProtocol.Presets.MarineFot,
+                "DeepBlue" => WeekAquaProtocol.Presets.DeepBlue,
+                "Moonlight" => WeekAquaProtocol.Presets.Moonlight,
                 "AlgaeMax" => WeekAquaProtocol.Presets.AlgaeMax,
-                _ => (50, 50, 50, 50, 0, 0)
+                _ => WeekAquaProtocol.Presets.GreenGrass
             };
 
             // 1. Normalize preset for Live Manual Spectrum Controls to ensure total power <= 100%
@@ -503,6 +571,7 @@ namespace WeekAquaWPF.ViewModels
                     CurrentModelCode
                 );
 
+                slot.IsEnabled = (slotNorm.R > 0 || slotNorm.G > 0 || slotNorm.B > 0 || slotNorm.W > 0 || slotNorm.UV > 0 || slotNorm.Violet > 0);
                 slot.RedPercent = slotNorm.R;
                 slot.GreenPercent = slotNorm.G;
                 slot.BluePercent = slotNorm.B;
@@ -674,6 +743,17 @@ namespace WeekAquaWPF.ViewModels
 
         private void AddVirtualDemoDevices()
         {
+            DiscoveredDevices.Add(new BleDeviceInfo
+            {
+                Name = "WeekAqua M800 Pro [Virtual 4CH RGB/UV]",
+                BluetoothAddress = 0xAABBCC112255,
+                MacAddress = "AA:BB:CC:11:22:55",
+                ModelCode = "5746",
+                HasUvChannel = false,
+                Is4ChannelRgbUv = true,
+                Rssi = -42
+            });
+
             DiscoveredDevices.Add(new BleDeviceInfo
             {
                 Name = "WeekAqua L-Series [Virtual 4CH RGBW]",
@@ -861,14 +941,27 @@ namespace WeekAquaWPF.ViewModels
 
         private static TimeSpan AddHoursMod24(TimeSpan baseTime, double hoursToAdd)
         {
-            double totalMinutes = baseTime.TotalMinutes + (hoursToAdd * 60.0);
+            double baseMinutes = (baseTime.Hours * 60.0) + baseTime.Minutes;
+            double totalMinutes = baseMinutes + (hoursToAdd * 60.0);
             double modMinutes = totalMinutes % (24.0 * 60.0);
             if (modMinutes < 0) modMinutes += 24.0 * 60.0;
-            return TimeSpan.FromMinutes(modMinutes);
+            int h = (int)(modMinutes / 60.0) % 24;
+            int m = (int)Math.Round(modMinutes % 60.0);
+            if (m >= 60) { h = (h + 1) % 24; m = 0; }
+            return new TimeSpan(h, m, 0);
         }
 
         private void ApplyAutoScheduleTimes()
         {
+            if (WeekAquaProtocol.TryParseTimeString(ScheduleSunriseStr, out TimeSpan sunriseTime))
+            {
+                ScheduleSunriseTime = sunriseTime;
+            }
+            if (WeekAquaProtocol.TryParseTimeString(ScheduleSunsetStr, out TimeSpan sunsetTime))
+            {
+                ScheduleSunsetTime = sunsetTime;
+            }
+
             double totalHours;
             if (ScheduleSunriseTime == ScheduleSunsetTime)
             {
@@ -894,7 +987,7 @@ namespace WeekAquaWPF.ViewModels
             double r5 = Math.Min(totalHours - 0.50, totalHours * 0.85); // Sunset Start
             double r6 = totalHours;                       // Sunset End
 
-            TimeSpan t0 = ScheduleSunriseTime;
+            TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
 
             (TimeSpan Start, TimeSpan End)[] slotTimes = new (TimeSpan Start, TimeSpan End)[]
             {
@@ -924,6 +1017,7 @@ namespace WeekAquaWPF.ViewModels
 
             string modeDesc = ScheduleSunriseTime == ScheduleSunsetTime ? "24-Hour Cycle" : $"{totalHours:F1}h Photoperiod";
             AddLog(LogDirection.Info, $"Auto-calculated 12 schedule slot times based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}].");
+            SaveCurrentDeviceConfig();
         }
 
         private void ClearLog()

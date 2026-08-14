@@ -22,9 +22,11 @@ namespace WeekAquaWPF.Models
                 if (_name != value)
                 {
                     _name = value;
+                    AutoDetectChannelTypes();
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Has6Channel));
                     OnPropertyChanged(nameof(ChannelTypeDescription));
+                    OnPropertyChanged(nameof(Channel4Label));
                 }
             }
         }
@@ -55,9 +57,11 @@ namespace WeekAquaWPF.Models
                 if (_modelCode != value)
                 {
                     _modelCode = value;
+                    AutoDetectChannelTypes();
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Has6Channel));
                     OnPropertyChanged(nameof(ChannelTypeDescription));
+                    OnPropertyChanged(nameof(Channel4Label));
                 }
             }
         }
@@ -87,6 +91,48 @@ namespace WeekAquaWPF.Models
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(ChannelTypeDescription));
                     OnPropertyChanged(nameof(Channel4Label));
+                }
+            }
+        }
+
+        public void AutoDetectChannelTypes()
+        {
+            if (ModelCode == "5748" || ModelCode == "5749" || ModelCode == "5750" || ModelCode == "5751" || ModelCode == "5752")
+            {
+                _hasUvChannel = true;
+                _is4ChannelRgbUv = false;
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Name))
+            {
+                string upper = Name.ToUpperInvariant();
+
+                // 6CH / Multi-Channel / Marine models
+                if (upper.Contains("6CH") || upper.Contains("10CH") || upper.Contains("MARINE") || upper.Contains("CORAL") || upper.Contains("A-SERIES") || upper.Contains("A430"))
+                {
+                    _hasUvChannel = true;
+                    _is4ChannelRgbUv = false;
+                    return;
+                }
+
+                // 4-Channel RGB/UV Lineups: M-Series (M800, M600, M450, M400, M900, M1200 Pro), S-Series, T-Series (T90, T60), Z-Series, P-Series
+                bool isRgbUv = upper.Contains("UV") || upper.Contains("UVA") || upper.Contains("RGB/UV") || upper.Contains("RGB-UV") || upper.Contains("RGB_UV") ||
+                               upper.Contains("M800") || upper.Contains("M600") || upper.Contains("M450") || upper.Contains("M400") || upper.Contains("M900") || upper.Contains("M1200") || upper.Contains("M-PRO") || upper.Contains("M PRO") || upper.Contains("M_PRO") || upper.StartsWith("M") ||
+                               upper.Contains("S400") || upper.Contains("S450") || upper.Contains("S600") || upper.Contains("S800") || upper.Contains("S900") || upper.Contains("S1200") || upper.Contains("S-PRO") || upper.Contains("S PRO") || upper.Contains("S_PRO") ||
+                               upper.Contains("T90") || upper.Contains("T45") || upper.Contains("T60") || upper.Contains("T80") || upper.Contains("T120") ||
+                               upper.Contains("Z400") || upper.Contains("Z600") || upper.Contains("Z800") ||
+                               upper.Contains("P600") || upper.Contains("P800") || upper.Contains("P900") || upper.Contains("P1200") ||
+                               System.Text.RegularExpressions.Regex.IsMatch(upper, @"\b[MSTZP][0-9]{2,4}");
+
+                if (isRgbUv)
+                {
+                    _is4ChannelRgbUv = true;
+                    _hasUvChannel = false;
+                    if (string.IsNullOrEmpty(_modelCode))
+                    {
+                        _modelCode = "5746";
+                    }
                 }
             }
         }

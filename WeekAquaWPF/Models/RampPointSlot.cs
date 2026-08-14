@@ -14,6 +14,8 @@ namespace WeekAquaWPF.Models
         private bool _isEnabled = true;
         private TimeSpan _startTime = new TimeSpan(8, 0, 0);
         private TimeSpan _endTime = new TimeSpan(18, 0, 0);
+        private string _startTimeStr = "08:00";
+        private string _endTimeStr = "18:00";
         private double _redPercent = 80;
         private double _greenPercent = 80;
         private double _bluePercent = 80;
@@ -44,6 +46,7 @@ namespace WeekAquaWPF.Models
             set
             {
                 _startTime = value;
+                _startTimeStr = WeekAquaProtocol.FormatTimeString(value);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(StartTimeStr));
                 Validate();
@@ -56,6 +59,7 @@ namespace WeekAquaWPF.Models
             set
             {
                 _endTime = value;
+                _endTimeStr = WeekAquaProtocol.FormatTimeString(value);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(EndTimeStr));
                 Validate();
@@ -64,12 +68,17 @@ namespace WeekAquaWPF.Models
 
         public string StartTimeStr
         {
-            get => _startTime.ToString(@"hh\:mm");
+            get => _startTimeStr;
             set
             {
-                if (TimeSpan.TryParse(value, out TimeSpan ts))
+                _startTimeStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
-                    StartTime = ts;
+                    _startTime = ts;
+                    OnPropertyChanged(nameof(StartTime));
+                    ClearErrors(nameof(StartTimeStr));
+                    Validate();
                 }
                 else
                 {
@@ -80,12 +89,17 @@ namespace WeekAquaWPF.Models
 
         public string EndTimeStr
         {
-            get => _endTime.ToString(@"hh\:mm");
+            get => _endTimeStr;
             set
             {
-                if (TimeSpan.TryParse(value, out TimeSpan ts))
+                _endTimeStr = value;
+                OnPropertyChanged();
+                if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
-                    EndTime = ts;
+                    _endTime = ts;
+                    OnPropertyChanged(nameof(EndTime));
+                    ClearErrors(nameof(EndTimeStr));
+                    Validate();
                 }
                 else
                 {
