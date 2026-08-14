@@ -109,12 +109,47 @@ namespace WeekAquaWPF.Services
             }
             catch { }
 
+            bool isKnownWeekAqua = false;
+
+            // 1. Model code detected from BLE Advertisement Hex
+            if (!string.IsNullOrEmpty(modelCode))
+            {
+                isKnownWeekAqua = true;
+            }
+
+            // 2. Service UUID Check (FFE0, FFF0, FF60, FEE0)
+            if (!isKnownWeekAqua && args.Advertisement.ServiceUuids != null)
+            {
+                foreach (var uuid in args.Advertisement.ServiceUuids)
+                {
+                    string uStr = uuid.ToString().ToUpperInvariant();
+                    if (uStr.Contains("FFE0") || uStr.Contains("FFF0") || uStr.Contains("FF60") || uStr.Contains("FEE0"))
+                    {
+                        isKnownWeekAqua = true;
+                        break;
+                    }
+                }
+            }
+
             bool is4ChannelRgbUv = false;
 
-            // Name fallback check & 4-Channel RGB/UV vs 5-Channel UV distinction
+            // 3. Name check & 4-Channel RGB/UV vs 5-Channel UV distinction
             if (!string.IsNullOrWhiteSpace(name))
             {
                 string upperName = name.ToUpperInvariant();
+
+                if (upperName.Contains("WEEK") || upperName.Contains("AQUA") || upperName.Contains("LIGHT") || upperName.Contains("LAMP") ||
+                    upperName.Contains("PLUG") || upperName.Contains("SOCKET") || upperName.Contains("SP0") ||
+                    upperName.Contains("M-") || upperName.Contains("S-") || upperName.Contains("T-") || upperName.Contains("A-") || upperName.Contains("L-") ||
+                    upperName.Contains("T90") || upperName.Contains("T60") || upperName.Contains("T80") || upperName.Contains("T120") || upperName.Contains("T45") ||
+                    upperName.Contains("M450") || upperName.Contains("M600") || upperName.Contains("M800") || upperName.Contains("M900") || upperName.Contains("M1200") ||
+                    upperName.Contains("S450") || upperName.Contains("S600") || upperName.Contains("S800") || upperName.Contains("S900") || upperName.Contains("S1200") ||
+                    upperName.Contains("CORAL") || upperName.Contains("MARINE") ||
+                    System.Text.RegularExpressions.Regex.IsMatch(upperName, @"\b[MSTZPAL][0-9]{2,4}"))
+                {
+                    isKnownWeekAqua = true;
+                }
+
                 bool isMultiChannel = modelCode == "5748" || modelCode == "5749" || modelCode == "5750" || modelCode == "5751" || modelCode == "5752" ||
                                       upperName.Contains("5CH") || upperName.Contains("6CH") || upperName.Contains("10CH") || upperName.Contains("MARINE") || upperName.Contains("CORAL") || upperName.Contains("A-SERIES") || upperName.Contains("A430");
 
@@ -137,9 +172,15 @@ namespace WeekAquaWPF.Services
                 }
             }
 
+            // If not recognized as a WeekAqua device or compatible lighting hardware, ignore and skip
+            if (!isKnownWeekAqua)
+            {
+                return;
+            }
+
             var deviceInfo = new BleDeviceInfo
             {
-                Name = string.IsNullOrWhiteSpace(name) ? "Unknown BLE Device" : name,
+                Name = string.IsNullOrWhiteSpace(name) ? $"WeekAqua Device ({modelCode})" : name,
                 BluetoothAddress = args.BluetoothAddress,
                 MacAddress = macStr,
                 Rssi = args.RawSignalStrengthInDBm,
