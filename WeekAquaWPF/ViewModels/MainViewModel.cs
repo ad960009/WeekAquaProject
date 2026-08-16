@@ -675,17 +675,17 @@ namespace WeekAquaWPF.ViewModels
         {
             RampSlots.Clear();
 
-            // Natural 8-slot Sunrise/Sunset Cycle with 24:00 gapless transition (Fully compatible with all 4CH/5CH/6CH MCUs)
+            // Natural 8-slot Sunrise/Sunset Cycle (08:00 ~ 20:00 Photoperiod + 20:00 ~ 08:00 Night Rest)
             var defaultSlots = new (TimeSpan Start, TimeSpan End, double R, double G, double B, double W, bool Active)[]
             {
-                (new TimeSpan(19, 0, 0),  new TimeSpan(20, 15, 0), 20, 10, 15, 10, false), // 1: 🌅 Sunrise Start (20%)
-                (new TimeSpan(20, 15, 0), new TimeSpan(21, 45, 0), 50, 40, 50, 35, false), // 2: 🌄 Morning Ramp Up (65%)
-                (new TimeSpan(21, 45, 0), new TimeSpan(23, 15, 0), 70, 65, 70, 55, false), // 3: ☀️ Noon Peak 1 (100%)
-                (new TimeSpan(23, 15, 0), TimeSpan.FromHours(24),  70, 65, 70, 55, false), // 4: ☀️ Peak to Midnight (100%) -> Ends at 24:00!
-                (new TimeSpan(0, 0, 0),   new TimeSpan(1, 0, 0),   60, 50, 60, 45, false), // 5: 🌤️ Post-Midnight Down (75%) -> Starts at 00:00!
-                (new TimeSpan(1, 0, 0),   new TimeSpan(1, 45, 0),  40, 20, 30, 15, false), // 6: 🌇 Sunset Start (45%)
-                (new TimeSpan(1, 45, 0),  new TimeSpan(2, 0, 0),   10, 5,  15, 5,  false), // 7: 🌙 Sunset Finish (15%) -> Completes at 02:00!
-                (new TimeSpan(2, 0, 0),   new TimeSpan(19, 0, 0),  0,  0,  4,  0,  false), // 8: 🌑 Night Moonlight / Rest (Covers 02:00 ~ 19:00)
+                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 30, 0),  20, 10, 15, 10, false), // 1: 🌅 Sunrise Start (20%)
+                (new TimeSpan(9, 30, 0),  new TimeSpan(11, 20, 0), 50, 40, 50, 35, false), // 2: 🌄 Morning Ramp Up (65%)
+                (new TimeSpan(11, 20, 0), new TimeSpan(14, 35, 0), 70, 65, 70, 55, false), // 3: ☀️ Noon Peak 1 (100%)
+                (new TimeSpan(14, 35, 0), new TimeSpan(17, 0, 0),  70, 65, 70, 55, false), // 4: ☀️ Afternoon Peak 2 (100%)
+                (new TimeSpan(17, 0, 0),  new TimeSpan(18, 35, 0), 60, 50, 60, 45, false), // 5: 🌤️ Afternoon Ramp Down (75%)
+                (new TimeSpan(18, 35, 0), new TimeSpan(19, 30, 0), 40, 20, 30, 15, false), // 6: 🌇 Sunset Start (45%)
+                (new TimeSpan(19, 30, 0), new TimeSpan(20, 0, 0),  10, 5,  15, 5,  false), // 7: 🌙 Sunset Finish (15%) -> Completes at 20:00!
+                (new TimeSpan(20, 0, 0),  new TimeSpan(8, 0, 0),   0,  0,  4,  0,  false), // 8: 🌑 Night Rest / Moonlight (Covers 20:00 ~ 08:00)
                 (new TimeSpan(0, 0, 0),   new TimeSpan(0, 0, 0),   0,  0,  0,  0,  false), // 9: (Disabled)
                 (new TimeSpan(0, 0, 0),   new TimeSpan(0, 0, 0),   0,  0,  0,  0,  false), // 10: (Disabled)
                 (new TimeSpan(0, 0, 0),   new TimeSpan(0, 0, 0),   0,  0,  0,  0,  false), // 11: (Disabled)
@@ -1118,74 +1118,32 @@ namespace WeekAquaWPF.ViewModels
                 totalHours = 24.0 - (ScheduleSunriseTime - ScheduleSunsetTime).TotalHours;
             }
 
-            (TimeSpan Start, TimeSpan End)[] slotTimes;
+            // Continuous 24-hour cycle layout without artificial 00:00 / 24:00 cuts
+            TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
+            TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
 
-            if (ScheduleSunsetTime < ScheduleSunriseTime)
+            double r1 = totalHours * 0.12;
+            double r2 = totalHours * 0.28;
+            double r3 = totalHours * 0.55;
+            double r4 = totalHours * 0.75;
+            double r5 = totalHours * 0.88;
+            double r6 = totalHours * 0.96;
+
+            var slotTimes = new (TimeSpan Start, TimeSpan End)[]
             {
-                // Midnight-Crossing Photoperiod (e.g., 19:00 to 02:00) - 8-Slot Safe Layout
-                // Slot 1~4: Today (Sunrise ~ 24:00)
-                // Slot 5~7: Next day (00:00 ~ SunsetTime)
-                // Slot 8: Night Rest (SunsetTime ~ SunriseTime)
-                double hToday = 24.0 - ScheduleSunriseTime.TotalHours; // Remaining hours in current day
-                double hNext = ScheduleSunsetTime.TotalHours;          // Hours in next morning
-
-                TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
-                TimeSpan tMidnightEnd = TimeSpan.FromHours(24); // Formats as 24:00 (BCD 0x24 0x00) for gapless midnight transition
-                TimeSpan tZero = new TimeSpan(0, 0, 0);
-                TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
-
-                slotTimes = new (TimeSpan Start, TimeSpan End)[]
-                {
-                    // Today Evening Slots 1~4 (Sunrise ~ 24:00)
-                    (t0, AddHoursMod24(t0, hToday * 0.25)),                                            // Slot 1: 🌅 Sunrise Start (20%)
-                    (AddHoursMod24(t0, hToday * 0.25), AddHoursMod24(t0, hToday * 0.55)),             // Slot 2: 🌄 Morning Ramp Up (65%)
-                    (AddHoursMod24(t0, hToday * 0.55), AddHoursMod24(t0, hToday * 0.80)),             // Slot 3: ☀️ Noon Peak 1 (100%)
-                    (AddHoursMod24(t0, hToday * 0.80), tMidnightEnd),                                 // Slot 4: ☀️ Peak to Midnight (100%) -> Ends at 24:00!
-
-                    // Next Day Early Morning Slots 5~7 (00:00 ~ Sunset)
-                    (tZero, AddHoursMod24(tZero, hNext * 0.50)),                                      // Slot 5: 🌤️ Post-Midnight Ramp Down (75%) -> Starts at 00:00!
-                    (AddHoursMod24(tZero, hNext * 0.50), AddHoursMod24(tZero, hNext * 0.85)),        // Slot 6: 🌇 Sunset Start (45%)
-                    (AddHoursMod24(tZero, hNext * 0.85), tSunset),                                    // Slot 7: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
-
-                    // Night Rest / Moonlight Slot 8 (Sunset ~ Sunrise)
-                    (tSunset, t0),                                                                    // Slot 8: 🌑 Night Rest / Moonlight (Covers rest of 24h)
-
-                    // Slots 9~12: Disabled / Clear for universal 8-slot MCU safety
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero)
-                };
-            }
-            else
-            {
-                // Same-Day Photoperiod (e.g., 08:00 to 20:00) - 8-Slot Safe Layout
-                TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
-                TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
-
-                double r1 = totalHours * 0.12;
-                double r2 = totalHours * 0.28;
-                double r3 = totalHours * 0.55;
-                double r4 = totalHours * 0.75;
-                double r5 = totalHours * 0.88;
-                double r6 = totalHours * 0.96;
-
-                slotTimes = new (TimeSpan Start, TimeSpan End)[]
-                {
-                    (t0, AddHoursMod24(t0, r1)),                                        // Slot 1: 🌅 Sunrise (20%)
-                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                     // Slot 2: 🌄 Morning Ramp (65%)
-                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                     // Slot 3: ☀️ Noon Peak 1 (100%)
-                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),                     // Slot 4: ☀️ Afternoon Peak 2 (100%)
-                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                     // Slot 5: 🌤️ Afternoon Ramp Down (75%)
-                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                     // Slot 6: 🌇 Sunset Start (45%)
-                    (AddHoursMod24(t0, r6), tSunset),                                   // Slot 7: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
-                    (tSunset, t0),                                                      // Slot 8: 🌑 Night Rest / Moonlight (Covers rest of 24h)
-                    (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 9: Clear
-                    (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 10: Clear
-                    (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 11: Clear
-                    (TimeSpan.Zero, TimeSpan.Zero)                                      // Slot 12: Clear
-                };
-            }
+                (t0, AddHoursMod24(t0, r1)),                                        // Slot 1: 🌅 Sunrise (20%)
+                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                     // Slot 2: 🌄 Morning Ramp (65%)
+                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                     // Slot 3: ☀️ Noon Peak 1 (100%)
+                (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),                     // Slot 4: ☀️ Afternoon Peak 2 (100%)
+                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                     // Slot 5: 🌤️ Afternoon Ramp Down (75%)
+                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                     // Slot 6: 🌇 Sunset Start (45%)
+                (AddHoursMod24(t0, r6), tSunset),                                   // Slot 7: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
+                (tSunset, t0),                                                      // Slot 8: 🌑 Night Rest / Moonlight (Covers rest of 24h)
+                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 9: Clear
+                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 10: Clear
+                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 11: Clear
+                (TimeSpan.Zero, TimeSpan.Zero)                                      // Slot 12: Clear
+            };
 
             for (int i = 0; i < RampSlots.Count && i < slotTimes.Length; i++)
             {

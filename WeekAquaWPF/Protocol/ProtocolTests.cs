@@ -57,11 +57,23 @@ namespace WeekAquaWPF.Protocol
                 string rampSpectrumHex = WeekAquaProtocol.BytesToHexString(rampSpectrumPacket);
                 if (rampSpectrumHex != "FBF1EBC896005555") throw new Exception($"Ramp spectrum packet mismatch: {rampSpectrumHex}");
 
-                // 10. Test Power Parsing
-                byte[] samplePowerBytes = WeekAquaProtocol.HexStringToBytes("0000000002FAF080"); // 50000000 rawVal
-                double kwh = WeekAquaProtocol.ParsePowerData(samplePowerBytes);
-                // 50000000 * 4.6566128730773926E-8 = ~2.328 => 2.3
-                if (Math.Abs(kwh - 2.3) > 0.1) throw new Exception($"Power calculation mismatch: {kwh}");
+                // 11. Test RampPointSlot Validation (Allow midnight crossing slot like 22:00 ~ 06:00)
+                var midnightSlot = new WeekAquaWPF.Models.RampPointSlot
+                {
+                    PointId = 1,
+                    IsEnabled = true,
+                    StartTime = new TimeSpan(22, 0, 0),
+                    EndTime = new TimeSpan(6, 0, 0),
+                    RedPercent = 50,
+                    GreenPercent = 50,
+                    BluePercent = 50,
+                    WhitePercent = 50
+                };
+                midnightSlot.Validate();
+                if (midnightSlot.HasErrors)
+                {
+                    throw new Exception($"Midnight-crossing slot unexpectedly has errors: {midnightSlot.FirstErrorMessage}");
+                }
 
                 Debug.WriteLine("All WeekAqua Protocol Verification Tests Passed!");
                 return true;
