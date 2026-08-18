@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using WeekAquaWPF.Models;
 
 namespace WeekAquaWPF.Protocol
 {
@@ -74,6 +75,25 @@ namespace WeekAquaWPF.Protocol
                 {
                     throw new Exception($"Midnight-crossing slot unexpectedly has errors: {midnightSlot.FirstErrorMessage}");
                 }
+
+                // 12. Test Device Model Slot Limit Detection (5, 8, 12 Slots)
+                var dev5 = new BleDeviceInfo { ModelCode = "5745" };
+                if (dev5.MaxScheduleSlots != 5) throw new Exception($"Model 5745 expected 5 slots, got {dev5.MaxScheduleSlots}");
+
+                var dev8_old = new BleDeviceInfo { ModelCode = "5746" };
+                if (dev8_old.MaxScheduleSlots != 8) throw new Exception($"Model 5746 expected 8 slots, got {dev8_old.MaxScheduleSlots}");
+
+                var dev8_six = new BleDeviceInfo { ModelCode = "5749" };
+                if (dev8_six.MaxScheduleSlots != 8) throw new Exception($"Model 5749 expected 8 slots, got {dev8_six.MaxScheduleSlots}");
+
+                var dev12_four = new BleDeviceInfo { ModelCode = "5747" };
+                if (dev12_four.MaxScheduleSlots != 12) throw new Exception($"Model 5747 expected 12 slots, got {dev12_four.MaxScheduleSlots}");
+
+                var dev12_five = new BleDeviceInfo { ModelCode = "5748" };
+                if (dev12_five.MaxScheduleSlots != 12) throw new Exception($"Model 5748 expected 12 slots, got {dev12_five.MaxScheduleSlots}");
+
+                var dev12_nine = new BleDeviceInfo { ModelCode = "5752" };
+                if (dev12_nine.MaxScheduleSlots != 12) throw new Exception($"Model 5752 expected 12 slots, got {dev12_nine.MaxScheduleSlots}");
 
                 Debug.WriteLine("All WeekAqua Protocol Verification Tests Passed!");
                 return true;

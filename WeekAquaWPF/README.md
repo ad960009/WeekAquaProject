@@ -26,10 +26,11 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 Windows
    - 시작 시간(예: 08:00) 및 종료 시간(예: 18:00), 램프 시간(0h ~ 2.5h) 설정
    - **BCD 시간 인코딩** 적용 타이머 패킷(`FEF9`) 및 **일출일몰 모드 활성화 패킷(`FDF1`)** 동시 전송
 
-4. **8-Slot / 12-Slot Ramp-up/down 고급 다중 스케줄 에디터 (Advanced Schedule Mode)**
-   - **전 모델 호환 8슬롯 안전 모드 (8-Slot Safe Layout)**: 4CH(최대 8슬롯) 및 5/6CH(최대 12슬롯) 전 모델 MCU 펌웨어와 100% 호환되도록 일출 $\rightarrow$ 정오 피크 $\rightarrow$ 일몰 $\rightarrow$ 심야 달빛을 8개 슬롯 내에 완벽 분배
+4. **5-Slot / 8-Slot / 12-Slot Ramp-up/down 고급 다중 스케줄 에디터 (Advanced Schedule Mode)**
+   - **기기 모델별 하드웨어 슬롯 한도 자동 감지 (5/8/12 Slots Intelligent Dispatch)**: 연결된 기기 펌웨어 스펙(`5745` 5슬롯, `5746`/`5749`/`5751` 8슬롯, `5747`/`5748`/`5752` 12슬롯)에 맞춰 정확한 슬롯 범위(`FEF1~FEF5`, `FEF1~FEF8`, `FEF1~FEFC`)만 분기 전송하여 헤더 오동작 방지
+   - **전 모델 호환 8슬롯 안전 모드 (8-Slot Safe Layout)**: 일출 $\rightarrow$ 정오 피크 $\rightarrow$ 일몰 $\rightarrow$ 심야 달빛을 8개 슬롯 내에 완벽 분배하여 전 기종 호환
    - **자정 24:00 (`0x24 0x00`) 무암전(Gapless) 연속 점등**: 23:59의 1분 암전 문제를 공식 규격(`24:00`)으로 해결하여 0.1초의 끊김 없는 자정 바통 터치 지원
-   - **🌙 심야 달빛 유지 (Keep Night Moonlight Glow)**: 심야/소등 구간(Slot 8)에 완전 암흑 대신 4%의 은은한 달빛(Blue 4%)을 익일 일출 전까지 밤새 유지하는 원클릭 토글 옵션
+   - **🌙 심야 달빛 유지 (Keep Night Moonlight Glow)**: 심야/소등 구간에 완전 암흑 대신 4%의 은은한 달빛(Blue 4%)을 익일 일출 전까지 밤새 유지하는 원클릭 토글 옵션
    - **스케줄 전송 시 실시간 RTC 시계 자동 동기화 (`0xFF`)**: 스케줄 전송 시 PC 시각을 0번 패킷으로 조명에 무조건 먼저 동기화하여 시계 오차 방지
    - **기기별 White/UV 컬럼 헤더 동적 자동 전환**: 4CH RGB-UV, 4CH RGBW, 5/6CH 멀티 스펙트럼 등 연결된 하드웨어 구성에 맞춰 DataGrid 컬럼 헤더 실시간 전환
    - **500ms Delayed Write Queue**: 다중 패킷 연쇄 송신 시 패킷 유실 방지를 위한 500ms 지연 큐 전송

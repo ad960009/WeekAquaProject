@@ -41,30 +41,52 @@ namespace WeekAquaWPF.ViewModels
             get => _selectedDevice;
             set
             {
-                _selectedDevice = value;
-                OnPropertyChanged();
-                string modelCode = _selectedDevice?.ModelCode ?? string.Empty;
-                Is4ChannelRgbUv = _selectedDevice?.Is4ChannelRgbUv ?? false;
-                HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
-                Has6Channel = _selectedDevice?.Has6Channel ?? false;
-                OnPropertyChanged(nameof(Channel4Name));
-                OnPropertyChanged(nameof(Channel4Color));
-                OnPropertyChanged(nameof(Channel4Header));
-                OnPropertyChanged(nameof(ScheduleChannel4Header));
-                OnPropertyChanged(nameof(ScheduleChannel5Header));
-                OnPropertyChanged(nameof(ScheduleChannel6Header));
-                foreach (var slot in RampSlots)
+                if (IsConnected && _selectedDevice != null && value != null && value != _selectedDevice)
                 {
-                    slot.ModelCode = modelCode;
-                    slot.IsUvEnabled = HasUvChannel;
-                    slot.IsVioletEnabled = Has6Channel;
+                    AddLog(LogDirection.Warning, $"Cannot switch device while connected. Please disconnect from '{_selectedDevice.Name}' first.");
+                    OnPropertyChanged(nameof(SelectedDevice));
+                    return;
                 }
-                if (_selectedDevice != null)
+
+                if (_selectedDevice != value)
                 {
-                    LoadDeviceConfig(_selectedDevice.MacAddress);
+                    _selectedDevice = value;
+                    OnPropertyChanged();
+                    string modelCode = _selectedDevice?.ModelCode ?? string.Empty;
+                    Is4ChannelRgbUv = _selectedDevice?.Is4ChannelRgbUv ?? false;
+                    HasUvChannel = _selectedDevice?.HasUvChannel ?? false;
+                    Has6Channel = _selectedDevice?.Has6Channel ?? false;
+                    OnPropertyChanged(nameof(CurrentModelCode));
+                    OnPropertyChanged(nameof(Channel4Name));
+                    OnPropertyChanged(nameof(Channel4Color));
+                    OnPropertyChanged(nameof(Channel4Header));
+                    OnPropertyChanged(nameof(Channel5Name));
+                    OnPropertyChanged(nameof(Channel5Color));
+                    OnPropertyChanged(nameof(Channel6Name));
+                    OnPropertyChanged(nameof(Channel6Color));
+                    OnPropertyChanged(nameof(ScheduleChannel4Header));
+                    OnPropertyChanged(nameof(ScheduleChannel5Header));
+                    OnPropertyChanged(nameof(ScheduleChannel6Header));
+                    OnPropertyChanged(nameof(ScheduleSlotLimit));
+                    OnPropertyChanged(nameof(ScheduleSlotLimitDescription));
+                    OnPropertyChanged(nameof(AutoScheduleButtonText));
+                    foreach (var slot in RampSlots)
+                    {
+                        slot.ModelCode = modelCode;
+                        slot.IsUvEnabled = HasUvChannel;
+                        slot.IsVioletEnabled = Has6Channel;
+                    }
+                    if (_selectedDevice != null)
+                    {
+                        LoadDeviceConfig(_selectedDevice.MacAddress);
+                    }
                 }
             }
         }
+
+        public int ScheduleSlotLimit => SelectedDevice?.MaxScheduleSlots ?? 8;
+        public string ScheduleSlotLimitDescription => SelectedDevice?.ScheduleSlotLimitDescription ?? "8 Slots (1~8)";
+        public string AutoScheduleButtonText => $"⚡ Auto-Calculate {ScheduleSlotLimit}-Slot Schedule Times";
 
         private bool _is4ChannelRgbUv = false;
 
@@ -78,14 +100,22 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged(nameof(Channel4Name));
                 OnPropertyChanged(nameof(Channel4Color));
                 OnPropertyChanged(nameof(Channel4Header));
+                OnPropertyChanged(nameof(Channel5Name));
+                OnPropertyChanged(nameof(Channel5Color));
                 OnPropertyChanged(nameof(ScheduleChannel4Header));
                 OnPropertyChanged(nameof(ScheduleChannel5Header));
             }
         }
 
-        public string Channel4Name => Is4ChannelRgbUv ? "UV (4th Ch)" : "White";
-        public string Channel4Color => Is4ChannelRgbUv ? "#C084FC" : "#F59E0B";
+        public string Channel4Name => SelectedDevice?.Channel4Label ?? (Is4ChannelRgbUv ? "UV (Ultraviolet)" : "White");
+        public string Channel4Color => SelectedDevice?.Channel4Color ?? (Is4ChannelRgbUv ? "#C084FC" : "#F4F4F5");
         public string Channel4Header => Is4ChannelRgbUv ? "UV Channel (395nm)" : "White Channel";
+
+        public string Channel5Name => SelectedDevice?.Channel5Label ?? (Is4ChannelRgbUv ? "White (W)" : "UV/UVA");
+        public string Channel5Color => SelectedDevice?.Channel5Color ?? (HasUvChannel ? "#8B5CF6" : "#71717A");
+
+        public string Channel6Name => SelectedDevice?.Channel6Label ?? "Violet";
+        public string Channel6Color => SelectedDevice?.Channel6Color ?? (Has6Channel ? "#EC4899" : "#71717A");
 
         public string ScheduleChannel4Header => Is4ChannelRgbUv ? "UV %" : "White %";
         public string ScheduleChannel5Header => Is4ChannelRgbUv ? "White %" : "UV/UVA %";
@@ -98,6 +128,7 @@ namespace WeekAquaWPF.ViewModels
             {
                 _hasUvChannel = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(Channel5Color));
                 OnPropertyChanged(nameof(ScheduleChannel4Header));
                 OnPropertyChanged(nameof(ScheduleChannel5Header));
                 if (!_hasUvChannel) UvPercent = 0.0;
@@ -117,6 +148,7 @@ namespace WeekAquaWPF.ViewModels
             {
                 _has6Channel = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(Channel6Color));
                 if (!_has6Channel) VioletPercent = 0.0;
                 foreach (var slot in RampSlots)
                 {
@@ -134,8 +166,21 @@ namespace WeekAquaWPF.ViewModels
         public bool IsConnected
         {
             get => _isConnected;
-            set { _isConnected = value; OnPropertyChanged(); }
+            set
+            {
+                if (_isConnected != value)
+                {
+                    _isConnected = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsNotConnected));
+                    OnPropertyChanged(nameof(CanSelectDevice));
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
         }
+
+        public bool IsNotConnected => !IsConnected;
+        public bool CanSelectDevice => !IsConnected;
 
         public string ConnectionStatusText
         {
@@ -294,6 +339,41 @@ namespace WeekAquaWPF.ViewModels
         }
 
         public byte VioletByte => WeekAquaProtocol.PercentToByte(VioletPercent);
+
+        public void SetLiveSpectrum(double r, double g, double b, double w, double uv = 0.0, double violet = 0.0)
+        {
+            var norm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
+                r,
+                g,
+                b,
+                w,
+                HasUvChannel ? uv : 0.0,
+                Has6Channel ? violet : 0.0,
+                CurrentModelCode
+            );
+
+            _redPercent = norm.R;
+            _greenPercent = norm.G;
+            _bluePercent = norm.B;
+            _whitePercent = norm.W;
+            _uvPercent = HasUvChannel ? norm.UV : 0.0;
+            _violetPercent = Has6Channel ? norm.Violet : 0.0;
+
+            OnPropertyChanged(nameof(RedPercent));
+            OnPropertyChanged(nameof(GreenPercent));
+            OnPropertyChanged(nameof(BluePercent));
+            OnPropertyChanged(nameof(WhitePercent));
+            OnPropertyChanged(nameof(UvPercent));
+            OnPropertyChanged(nameof(VioletPercent));
+            OnPropertyChanged(nameof(RedByte));
+            OnPropertyChanged(nameof(GreenByte));
+            OnPropertyChanged(nameof(BlueByte));
+            OnPropertyChanged(nameof(WhiteByte));
+            OnPropertyChanged(nameof(UvByte));
+            OnPropertyChanged(nameof(VioletByte));
+            OnPropertyChanged(nameof(TotalPowerPercent));
+            OnSpectrumChanged();
+        }
 
         public double FanSpeedPercent
         {
@@ -484,7 +564,7 @@ namespace WeekAquaWPF.ViewModels
             _bleService.DataReceived += OnDataReceived;
             _bleService.LogMessage += OnBleLogMessage;
 
-            ScanCommand = new RelayCommand(StartScan);
+            ScanCommand = new RelayCommand(StartScan, () => !IsConnected);
             ConnectCommand = new RelayCommand(ConnectToSelectedDevice, () => SelectedDevice != null && !IsConnected);
             DisconnectCommand = new RelayCommand(DisconnectDevice, () => IsConnected);
             SendLiveSpectrumCommand = new RelayCommand(SendLiveSpectrum);
@@ -566,47 +646,70 @@ namespace WeekAquaWPF.ViewModels
                 _ => WeekAquaProtocol.Presets.GreenGrass
             };
 
-            // 1. Normalize preset for Live Manual Spectrum Controls to ensure total power <= 100%
-            var liveNorm = WeekAquaProtocol.NormalizeSpectrumToMaxPower(
-                preset.R,
-                preset.G,
-                preset.B,
-                preset.W,
-                HasUvChannel ? preset.UV : 0.0,
-                Has6Channel ? preset.V : 0.0,
-                CurrentModelCode
-            );
+            // 1. Set Live Manual Spectrum Controls atomically with normalized max power (<= 100%)
+            SetLiveSpectrum(preset.R, preset.G, preset.B, preset.W, preset.UV, preset.V);
 
-            RedPercent = liveNorm.R;
-            GreenPercent = liveNorm.G;
-            BluePercent = liveNorm.B;
-            WhitePercent = liveNorm.W;
-            UvPercent = liveNorm.UV;
-            VioletPercent = liveNorm.Violet;
+            // 2. Naturally scale preset color ratio across Ramp Schedule Slots (Intelligently mapped for 5, 8, or 12 slots)
+            int maxSlots = ScheduleSlotLimit;
+            double[] dailyIntensityCurve;
 
-            // 2. Naturally scale preset color ratio across 8 Ramp Schedule Slots (Universal compatibility with all 4CH/5CH/6CH WeekAqua models)
-            double[] dailyIntensityCurve = new double[]
+            if (maxSlots == 5)
             {
-                0.20, // Slot 1: 🌅 Sunrise Start
-                0.65, // Slot 2: 🌄 Morning Ramp Up
-                1.00, // Slot 3: ☀️ Noon Peak 1
-                1.00, // Slot 4: ☀️ Afternoon Peak 2 / Midnight
-                0.75, // Slot 5: 🌤️ Afternoon Ramp Down
-                0.45, // Slot 6: 🌇 Sunset Start
-                0.15, // Slot 7: 🌙 Sunset Finish (Ends at SunsetTime)
-                0.00, // Slot 8: 🌑 Night Rest / Moonlight (Covers rest of 24h)
-                0.00, // Slot 9: Clear
-                0.00, // Slot 10: Clear
-                0.00, // Slot 11: Clear
-                0.00  // Slot 12: Clear
-            };
+                // 5-Slot Layout (Mode 1 / 2)
+                dailyIntensityCurve = new double[]
+                {
+                    0.25, // Slot 1: Sunrise (25%)
+                    0.70, // Slot 2: Morning (70%)
+                    1.00, // Slot 3: Noon Peak (100%)
+                    0.35, // Slot 4: Sunset Finish (35% -> 0%)
+                    0.00, // Slot 5: Night Rest / Moonlight
+                    0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00 // Slots 6~12: Disabled
+                };
+            }
+            else if (maxSlots == 12)
+            {
+                // 12-Slot Layout (Mode 3 / 5 / 9)
+                dailyIntensityCurve = new double[]
+                {
+                    0.15, // Slot 1: Dawn
+                    0.35, // Slot 2: Early Sunrise
+                    0.60, // Slot 3: Morning Ramp Up
+                    0.85, // Slot 4: Mid Morning
+                    1.00, // Slot 5: Noon Peak 1
+                    1.00, // Slot 6: Noon Peak 2
+                    0.90, // Slot 7: Afternoon
+                    0.70, // Slot 8: Late Afternoon
+                    0.50, // Slot 9: Early Sunset
+                    0.30, // Slot 10: Sunset
+                    0.15, // Slot 11: Dusk Finish
+                    0.00  // Slot 12: Night Rest / Moonlight
+                };
+            }
+            else
+            {
+                // 8-Slot Layout (Standard / Safe for all models)
+                dailyIntensityCurve = new double[]
+                {
+                    0.20, // Slot 1: Sunrise Start
+                    0.65, // Slot 2: Morning Ramp Up
+                    1.00, // Slot 3: Noon Peak 1
+                    1.00, // Slot 4: Afternoon Peak 2
+                    0.75, // Slot 5: Afternoon Ramp Down
+                    0.45, // Slot 6: Sunset Start
+                    0.15, // Slot 7: Sunset Finish
+                    0.00, // Slot 8: Night Rest / Moonlight
+                    0.00, 0.00, 0.00, 0.00 // Slots 9~12: Disabled
+                };
+            }
+
+            int nightSlotIndex = maxSlots - 1; // 0-based index for the night/moonlight slot
 
             for (int i = 0; i < RampSlots.Count && i < dailyIntensityCurve.Length; i++)
             {
                 double factor = dailyIntensityCurve[i];
                 var slot = RampSlots[i];
 
-                if (i == 7) // Slot 8 (Night rest / Moonlight slot)
+                if (i == nightSlotIndex)
                 {
                     if (KeepMoonlight)
                     {
@@ -629,7 +732,7 @@ namespace WeekAquaWPF.ViewModels
                         slot.VioletPercent = 0;
                     }
                 }
-                else if (i >= 8) // Slot 9~12 (Disabled / Clear for 8-slot MCU compatibility)
+                else if (i >= maxSlots)
                 {
                     slot.IsEnabled = false;
                     slot.RedPercent = 0;
@@ -1000,8 +1103,18 @@ namespace WeekAquaWPF.ViewModels
 
         private void SyncAllRampSlots()
         {
-            // Option 3: Batch Validation Check before transmission
-            var invalidSlots = RampSlots.Where(s => s.HasErrors).ToList();
+            int maxSlots = ScheduleSlotLimit;
+            if (maxSlots < 1) maxSlots = 8;
+
+            // Warn if user has enabled slots beyond device hardware limits
+            var extraActiveSlots = RampSlots.Where(s => s.PointId > maxSlots && s.IsEnabled).ToList();
+            if (extraActiveSlots.Any())
+            {
+                AddLog(LogDirection.Warning, $"Current device supports up to {maxSlots} slots. Slot(s) #{string.Join(", #", extraActiveSlots.Select(s => s.PointId))} exceed hardware limits and will not be transmitted.");
+            }
+
+            // Option 3: Batch Validation Check only for slots within hardware capability (Slot 1 ~ maxSlots)
+            var invalidSlots = RampSlots.Where(s => s.PointId <= maxSlots && s.HasErrors).ToList();
             if (invalidSlots.Any())
             {
                 var errorSummary = string.Join("\n", invalidSlots.Select(s => $"• Slot #{s.PointId}: {s.FirstErrorMessage}"));
@@ -1021,7 +1134,8 @@ namespace WeekAquaWPF.ViewModels
             _bleService.EnqueueWritePacket(rtcPacket, $"RTC Clock Sync ({DateTime.Now:HH:mm:ss})");
             enqueuedCount += 1;
 
-            foreach (var slot in RampSlots)
+            var targetSlots = RampSlots.Where(s => s.PointId <= maxSlots).ToList();
+            foreach (var slot in targetSlots)
             {
                 byte startH = (byte)slot.StartTime.TotalHours;
                 byte startM = (byte)slot.StartTime.Minutes;
@@ -1074,7 +1188,7 @@ namespace WeekAquaWPF.ViewModels
             _bleService.EnqueueWritePacket(modePacket, "Activate Mode 2 (FDF2)");
             enqueuedCount += 1;
 
-            AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot & Mode 2 (FDF2) packets (Processing with 500ms queue delay).");
+            AddLog(LogDirection.Info, $"Enqueued {enqueuedCount} schedule slot packets (Slots 1~{maxSlots}) & Mode 2 (FDF2) for {SelectedDevice?.ChannelTypeDescription ?? $"{maxSlots}-Slot Device"}.");
             SaveCurrentDeviceConfig();
         }
 
@@ -1122,28 +1236,90 @@ namespace WeekAquaWPF.ViewModels
             TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
             TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
 
-            double r1 = totalHours * 0.12;
-            double r2 = totalHours * 0.28;
-            double r3 = totalHours * 0.55;
-            double r4 = totalHours * 0.75;
-            double r5 = totalHours * 0.88;
-            double r6 = totalHours * 0.96;
+            int maxSlots = ScheduleSlotLimit;
+            (TimeSpan Start, TimeSpan End)[] slotTimes;
 
-            var slotTimes = new (TimeSpan Start, TimeSpan End)[]
+            if (maxSlots == 5)
             {
-                (t0, AddHoursMod24(t0, r1)),                                        // Slot 1: 🌅 Sunrise (20%)
-                (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),                     // Slot 2: 🌄 Morning Ramp (65%)
-                (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),                     // Slot 3: ☀️ Noon Peak 1 (100%)
-                (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),                     // Slot 4: ☀️ Afternoon Peak 2 (100%)
-                (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),                     // Slot 5: 🌤️ Afternoon Ramp Down (75%)
-                (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),                     // Slot 6: 🌇 Sunset Start (45%)
-                (AddHoursMod24(t0, r6), tSunset),                                   // Slot 7: 🌙 Sunset Finish (15%) -> Completes at SunsetTime!
-                (tSunset, t0),                                                      // Slot 8: 🌑 Night Rest / Moonlight (Covers rest of 24h)
-                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 9: Clear
-                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 10: Clear
-                (TimeSpan.Zero, TimeSpan.Zero),                                     // Slot 11: Clear
-                (TimeSpan.Zero, TimeSpan.Zero)                                      // Slot 12: Clear
-            };
+                // 5-Slot Layout (4 Day slots + 1 Night slot)
+                double r1 = totalHours * 0.15;
+                double r2 = totalHours * 0.45;
+                double r3 = totalHours * 0.80;
+
+                slotTimes = new (TimeSpan Start, TimeSpan End)[]
+                {
+                    (t0, AddHoursMod24(t0, r1)),
+                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
+                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
+                    (AddHoursMod24(t0, r3), tSunset),
+                    (tSunset, t0),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero)
+                };
+            }
+            else if (maxSlots == 12)
+            {
+                // 12-Slot Layout (11 Day slots + 1 Night slot)
+                double r1 = totalHours * 0.08;
+                double r2 = totalHours * 0.18;
+                double r3 = totalHours * 0.30;
+                double r4 = totalHours * 0.44;
+                double r5 = totalHours * 0.58;
+                double r6 = totalHours * 0.70;
+                double r7 = totalHours * 0.80;
+                double r8 = totalHours * 0.88;
+                double r9 = totalHours * 0.94;
+                double r10 = totalHours * 0.98;
+
+                slotTimes = new (TimeSpan Start, TimeSpan End)[]
+                {
+                    (t0, AddHoursMod24(t0, r1)),
+                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
+                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
+                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),
+                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),
+                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),
+                    (AddHoursMod24(t0, r6), AddHoursMod24(t0, r7)),
+                    (AddHoursMod24(t0, r7), AddHoursMod24(t0, r8)),
+                    (AddHoursMod24(t0, r8), AddHoursMod24(t0, r9)),
+                    (AddHoursMod24(t0, r9), AddHoursMod24(t0, r10)),
+                    (AddHoursMod24(t0, r10), tSunset),
+                    (tSunset, t0)
+                };
+            }
+            else
+            {
+                // 8-Slot Layout (7 Day slots + 1 Night slot)
+                double r1 = totalHours * 0.12;
+                double r2 = totalHours * 0.28;
+                double r3 = totalHours * 0.55;
+                double r4 = totalHours * 0.75;
+                double r5 = totalHours * 0.88;
+                double r6 = totalHours * 0.96;
+
+                slotTimes = new (TimeSpan Start, TimeSpan End)[]
+                {
+                    (t0, AddHoursMod24(t0, r1)),
+                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
+                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
+                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),
+                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),
+                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),
+                    (AddHoursMod24(t0, r6), tSunset),
+                    (tSunset, t0),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero),
+                    (TimeSpan.Zero, TimeSpan.Zero)
+                };
+            }
+
+            int nightSlotIndex = maxSlots - 1;
 
             for (int i = 0; i < RampSlots.Count && i < slotTimes.Length; i++)
             {
@@ -1152,7 +1328,7 @@ namespace WeekAquaWPF.ViewModels
                 slot.StartTime = times.Start;
                 slot.EndTime = times.End;
 
-                if (i == 7) // Slot 8 (Night / Moonlight slot)
+                if (i == nightSlotIndex)
                 {
                     if (KeepMoonlight)
                     {
@@ -1175,7 +1351,7 @@ namespace WeekAquaWPF.ViewModels
                         slot.VioletPercent = 0;
                     }
                 }
-                else if (i >= 8) // Slots 9~12 (Disabled / Clear)
+                else if (i >= maxSlots)
                 {
                     slot.IsEnabled = false;
                     slot.RedPercent = 0;
@@ -1194,7 +1370,7 @@ namespace WeekAquaWPF.ViewModels
             }
 
             string modeDesc = ScheduleSunriseTime == ScheduleSunsetTime ? "24-Hour Cycle" : $"{totalHours:F1}h Photoperiod";
-            AddLog(LogDirection.Info, $"Auto-calculated 8-slot safe schedule based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}, Moonlight: {(KeepMoonlight ? "ON" : "OFF")}].");
+            AddLog(LogDirection.Info, $"Auto-calculated {maxSlots}-slot schedule based on Sunrise ({ScheduleSunriseStr}) & Sunset ({ScheduleSunsetStr}) [{modeDesc}, Moonlight: {(KeepMoonlight ? "ON" : "OFF")}].");
             SaveCurrentDeviceConfig();
         }
 

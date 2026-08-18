@@ -438,6 +438,7 @@ namespace WeekAquaWPF.Services
 
         public void Disconnect()
         {
+            bool hadConnection = _isVirtualConnected || _currentDevice != null;
             _isVirtualConnected = false;
             if (_notifyCharacteristic != null)
             {
@@ -452,6 +453,11 @@ namespace WeekAquaWPF.Services
                 _currentDevice.ConnectionStatusChanged -= OnConnectionStatusChanged;
                 _currentDevice.Dispose();
                 _currentDevice = null;
+            }
+
+            if (hadConnection)
+            {
+                LogMessage?.Invoke(LogDirection.Info, "Disconnected from device.", null);
                 ConnectionStateChanged?.Invoke(false, "Disconnected");
             }
         }

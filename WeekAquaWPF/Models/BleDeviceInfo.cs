@@ -27,6 +27,13 @@ namespace WeekAquaWPF.Models
                     OnPropertyChanged(nameof(Has6Channel));
                     OnPropertyChanged(nameof(ChannelTypeDescription));
                     OnPropertyChanged(nameof(Channel4Label));
+                    OnPropertyChanged(nameof(Channel5Label));
+                    OnPropertyChanged(nameof(Channel6Label));
+                    OnPropertyChanged(nameof(Channel4Color));
+                    OnPropertyChanged(nameof(Channel5Color));
+                    OnPropertyChanged(nameof(Channel6Color));
+                    OnPropertyChanged(nameof(MaxScheduleSlots));
+                    OnPropertyChanged(nameof(ScheduleSlotLimitDescription));
                 }
             }
         }
@@ -62,6 +69,13 @@ namespace WeekAquaWPF.Models
                     OnPropertyChanged(nameof(Has6Channel));
                     OnPropertyChanged(nameof(ChannelTypeDescription));
                     OnPropertyChanged(nameof(Channel4Label));
+                    OnPropertyChanged(nameof(Channel5Label));
+                    OnPropertyChanged(nameof(Channel6Label));
+                    OnPropertyChanged(nameof(Channel4Color));
+                    OnPropertyChanged(nameof(Channel5Color));
+                    OnPropertyChanged(nameof(Channel6Color));
+                    OnPropertyChanged(nameof(MaxScheduleSlots));
+                    OnPropertyChanged(nameof(ScheduleSlotLimitDescription));
                 }
             }
         }
@@ -76,6 +90,7 @@ namespace WeekAquaWPF.Models
                     _hasUvChannel = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(ChannelTypeDescription));
+                    OnPropertyChanged(nameof(Channel5Color));
                 }
             }
         }
@@ -91,6 +106,9 @@ namespace WeekAquaWPF.Models
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(ChannelTypeDescription));
                     OnPropertyChanged(nameof(Channel4Label));
+                    OnPropertyChanged(nameof(Channel5Label));
+                    OnPropertyChanged(nameof(Channel4Color));
+                    OnPropertyChanged(nameof(Channel5Color));
                 }
             }
         }
@@ -153,10 +171,27 @@ namespace WeekAquaWPF.Models
         };
 
         public string Channel4Label => Is4ChannelRgbUv ? "UV (Ultraviolet)" : "White (W)";
+        public string Channel5Label => Is4ChannelRgbUv ? "White (W)" : "UV/UVA";
+        public string Channel6Label => "Violet";
+
+        public string Channel4Color => Is4ChannelRgbUv ? "#C084FC" : "#F4F4F5";
+        public string Channel5Color => HasUvChannel ? "#8B5CF6" : "#71717A";
+        public string Channel6Color => Has6Channel ? "#EC4899" : "#71717A";
+
+        public int MaxScheduleSlots => ModelCode switch
+        {
+            "5745" => 5,                       // Mode 1 / 2 (Classic 4-CH, e.g. T90 early)
+            "5747" or "5748" or "5752" => 12,  // Mode 3, Mode 5, Mode 9 (Multi-Channel Pro 12-Slot)
+            "5746" or "5749" or "5751" => 8,   // Mode 6, Mode 8, Old 8-Slot
+            "5750" => 8,                       // Smart Plug fallback
+            _ => (Name.Contains("6CH") || Name.Contains("10CH") || Name.Contains("MARINE") || Name.Contains("CORAL") || Name.Contains("A430")) ? 12 : 8
+        };
+
+        public string ScheduleSlotLimitDescription => $"{MaxScheduleSlots} Slots (1~{MaxScheduleSlots})";
 
         public override string ToString()
         {
-            return string.IsNullOrWhiteSpace(Name) ? $"Unknown ({MacAddress}) - {ChannelTypeDescription}" : $"{Name} [{MacAddress}] ({ChannelTypeDescription})";
+            return string.IsNullOrWhiteSpace(Name) ? $"Unknown ({MacAddress}) - {ChannelTypeDescription} [{ScheduleSlotLimitDescription}]" : $"{Name} [{MacAddress}] ({ChannelTypeDescription}, {ScheduleSlotLimitDescription})";
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

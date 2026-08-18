@@ -240,6 +240,7 @@
                         </Grid>
 
                         <ListBox Grid.Row="2" ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDevice}"
+                                 IsEnabled="{Binding CanSelectDevice}"
                                  Background="#18181B" BorderBrush="#3F3F46" Foreground="#F4F4F5">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
@@ -349,7 +350,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding SelectedDevice.Channel4Label, FallbackValue='White'}" Foreground="#F4F4F5" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Channel4Name, FallbackValue='White'}" Foreground="{Binding Channel4Color, FallbackValue='#F4F4F5'}" FontWeight="Bold" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding WhitePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
                                         <Run Text="{Binding WhitePercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
@@ -357,14 +358,14 @@
                                     </TextBlock>
                                 </Grid>
 
-                                <!-- UV/UVA Channel (Enabled for 5-Ch, 6-Ch & 7+ Ch models) -->
+                                <!-- Channel 5: UV/UVA / White -->
                                 <Grid Margin="0,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="UV/UVA" Foreground="#8B5CF6" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Channel5Name, FallbackValue='UV/UVA'}" Foreground="{Binding Channel5Color, FallbackValue='#8B5CF6'}" FontWeight="Bold" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding UvPercent, Mode=TwoWay}" IsEnabled="{Binding HasUvChannel}" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
                                         <Run Text="{Binding UvPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
@@ -372,14 +373,14 @@
                                     </TextBlock>
                                 </Grid>
 
-                                <!-- Violet/UV2 Channel (Enabled for 6-Ch & 7+ Ch models) -->
+                                <!-- Channel 6: Violet/UV2 -->
                                 <Grid Margin="0,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="60"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Violet" Foreground="#EC4899" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Channel6Name, FallbackValue='Violet'}" Foreground="{Binding Channel6Color, FallbackValue='#EC4899'}" FontWeight="Bold" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding VioletPercent, Mode=TwoWay}" IsEnabled="{Binding Has6Channel}" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11">
                                         <Run Text="{Binding VioletPercent, Mode=OneWay, StringFormat='{}{0:0}%'}"/>
@@ -580,7 +581,10 @@
 
                         <Grid Grid.Row="0" Margin="0,0,0,8">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📅 Ramp-up/down Schedule Editor (Points 1~12)" FontSize="16" FontWeight="Bold" Foreground="#A78BFA"/>
+                                <TextBlock Text="📅 Ramp-up/down Schedule Editor" FontSize="16" FontWeight="Bold" Foreground="#A78BFA"/>
+                                <Border Background="#3F3F46" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center" ToolTip="연결된 기기 하드웨어 펌웨어에 따라 5슬롯, 8슬롯, 12슬롯으로 자동 분기되어 전송됩니다.">
+                                    <TextBlock Text="{Binding ScheduleSlotLimitDescription, FallbackValue='8 Slots (1~8)'}" FontSize="11" FontWeight="Bold" Foreground="#38BDF8"/>
+                                </Border>
                                 <TextBlock Text=" Queue Delay: 500ms" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                             <Button Content="📡 Sync All Schedule Slots" Command="{Binding SyncAllRampSlotsCommand}" HorizontalAlignment="Right" Background="#7C3AED"/>
@@ -607,9 +611,9 @@
                                     <TextBox Text="{Binding ScheduleSunsetStr, UpdateSourceTrigger=PropertyChanged}" Width="55" FontSize="11" Padding="4,2" Background="#18181B" Foreground="#F4F4F5" BorderBrush="#52525B" TextAlignment="Center"/>
                                 </StackPanel>
 
-                                <CheckBox Grid.Column="2" Content="🌙 Keep Night Moonlight (3~5%)" IsChecked="{Binding KeepMoonlight, Mode=TwoWay}" Foreground="#93C5FD" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="심야/소등 시간대(Slot 12)에 완전 암흑 대신 은은한 달빛(Blue 4%)을 유지합니다."/>
+                                <CheckBox Grid.Column="2" Content="🌙 Keep Night Moonlight (3~5%)" IsChecked="{Binding KeepMoonlight, Mode=TwoWay}" Foreground="#93C5FD" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="심야/소등 시간대에 완전 암흑 대신 은은한 달빛(Blue 4%)을 유지합니다."/>
 
-                                <Button Grid.Column="4" Content="⚡ Auto-Calculate 12-Slot Schedule Times" Command="{Binding ApplyAutoScheduleTimesCommand}" Background="#2563EB" FontSize="11" Padding="10,4" FontWeight="Bold"/>
+                                <Button Grid.Column="4" Content="{Binding AutoScheduleButtonText, FallbackValue='⚡ Auto-Calculate 8-Slot Schedule Times'}" Command="{Binding ApplyAutoScheduleTimesCommand}" Background="#2563EB" FontSize="11" Padding="10,4" FontWeight="Bold"/>
                             </Grid>
                         </Border>
 
