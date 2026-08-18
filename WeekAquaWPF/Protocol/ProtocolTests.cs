@@ -95,6 +95,42 @@ namespace WeekAquaWPF.Protocol
                 var dev12_nine = new BleDeviceInfo { ModelCode = "5752" };
                 if (dev12_nine.MaxScheduleSlots != 12) throw new Exception($"Model 5752 expected 12 slots, got {dev12_nine.MaxScheduleSlots}");
 
+                // 13. Test 24:00 Midnight Ramp Time Packet (e.g. Slot 5: 22:48 ~ 24:00)
+                byte[] ramp24Packet = WeekAquaProtocol.BuildRampTimePacket(5, 22, 48, 24, 0);
+                string ramp24Hex = WeekAquaProtocol.BytesToHexString(ramp24Packet);
+                if (ramp24Hex != "FEF5224824005555") throw new Exception($"24:00 Ramp packet mismatch: {ramp24Hex}");
+
+                // 14. Test Cross-Midnight Auto Schedule Slot Calculation (18:00 ~ 02:00 for 8 slots)
+                var autoTimes = ViewModels.MainViewModel.CalculateAutoSlotTimes(new TimeSpan(18, 0, 0), new TimeSpan(2, 0, 0), 8);
+                if (autoTimes[4].End.TotalHours != 24.0)
+                {
+                    throw new Exception($"Slot 5 EndTime expected 24:00, got {WeekAquaProtocol.FormatTimeString(autoTimes[4].End)}");
+                }
+                if (autoTimes[5].Start != TimeSpan.Zero)
+                {
+                    throw new Exception($"Slot 6 StartTime expected 00:00, got {WeekAquaProtocol.FormatTimeString(autoTimes[5].Start)}");
+                }
+                if (autoTimes[6].End != new TimeSpan(2, 0, 0))
+                {
+                    throw new Exception($"Slot 7 EndTime expected 02:00, got {WeekAquaProtocol.FormatTimeString(autoTimes[6].End)}");
+                }
+                if (autoTimes[7].Start != new TimeSpan(2, 0, 0) || autoTimes[7].End != new TimeSpan(18, 0, 0))
+                {
+                    throw new Exception($"Slot 8 (Night) expected 02:00 ~ 18:00, got {WeekAquaProtocol.FormatTimeString(autoTimes[7].Start)} ~ {WeekAquaProtocol.FormatTimeString(autoTimes[7].End)}");
+                }
+
+                // 15. Test RampPointSlot automatic 00:00 -> 24:00 normalization for evening slots
+                var eveningSlot = new RampPointSlot
+                {
+                    PointId = 5,
+                    StartTimeStr = "22:48",
+                    EndTimeStr = "00:00"
+                };
+                if (eveningSlot.EndTimeStr != "24:00" || eveningSlot.EndTime.TotalHours != 24.0)
+                {
+                    throw new Exception($"Evening slot 00:00 EndTimeStr expected to normalize to 24:00, got {eveningSlot.EndTimeStr}");
+                }
+
                 Debug.WriteLine("All WeekAqua Protocol Verification Tests Passed!");
                 return true;
             }

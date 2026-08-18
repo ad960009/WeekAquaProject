@@ -75,8 +75,14 @@ namespace WeekAquaWPF.Models
                 OnPropertyChanged();
                 if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
+                    if (ts.TotalHours == 24.0)
+                    {
+                        ts = TimeSpan.Zero;
+                    }
                     _startTime = ts;
+                    _startTimeStr = WeekAquaProtocol.FormatTimeString(ts);
                     OnPropertyChanged(nameof(StartTime));
+                    OnPropertyChanged(nameof(StartTimeStr));
                     ClearErrors(nameof(StartTimeStr));
                     Validate();
                 }
@@ -96,8 +102,14 @@ namespace WeekAquaWPF.Models
                 OnPropertyChanged();
                 if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
+                    if (ts == TimeSpan.Zero && StartTime > TimeSpan.Zero)
+                    {
+                        ts = TimeSpan.FromHours(24);
+                    }
                     _endTime = ts;
+                    _endTimeStr = WeekAquaProtocol.FormatTimeString(ts);
                     OnPropertyChanged(nameof(EndTime));
+                    OnPropertyChanged(nameof(EndTimeStr));
                     ClearErrors(nameof(EndTimeStr));
                     Validate();
                 }

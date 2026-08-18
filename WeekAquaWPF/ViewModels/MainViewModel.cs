@@ -489,7 +489,7 @@ namespace WeekAquaWPF.ViewModels
             get => _scheduleSunriseTime;
             set
             {
-                _scheduleSunriseTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                _scheduleSunriseTime = (value.TotalHours == 24.0) ? TimeSpan.Zero : new TimeSpan(value.Hours % 24, value.Minutes, 0);
                 _scheduleSunriseStr = WeekAquaProtocol.FormatTimeString(_scheduleSunriseTime);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ScheduleSunriseStr));
@@ -501,7 +501,10 @@ namespace WeekAquaWPF.ViewModels
             get => _scheduleSunsetTime;
             set
             {
-                _scheduleSunsetTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
+                if (value.TotalHours == 24.0)
+                    _scheduleSunsetTime = TimeSpan.FromHours(24);
+                else
+                    _scheduleSunsetTime = new TimeSpan(value.Hours % 24, value.Minutes, 0);
                 _scheduleSunsetStr = WeekAquaProtocol.FormatTimeString(_scheduleSunsetTime);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ScheduleSunsetStr));
@@ -517,8 +520,11 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged();
                 if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
+                    if (ts.TotalHours == 24.0) ts = TimeSpan.Zero;
                     _scheduleSunriseTime = ts;
+                    _scheduleSunriseStr = WeekAquaProtocol.FormatTimeString(ts);
                     OnPropertyChanged(nameof(ScheduleSunriseTime));
+                    OnPropertyChanged(nameof(ScheduleSunriseStr));
                 }
                 SaveCurrentDeviceConfig();
             }
@@ -533,8 +539,14 @@ namespace WeekAquaWPF.ViewModels
                 OnPropertyChanged();
                 if (WeekAquaProtocol.TryParseTimeString(value, out TimeSpan ts))
                 {
+                    if (ts == TimeSpan.Zero && _scheduleSunriseTime > TimeSpan.Zero)
+                    {
+                        ts = TimeSpan.FromHours(24);
+                    }
                     _scheduleSunsetTime = ts;
+                    _scheduleSunsetStr = WeekAquaProtocol.FormatTimeString(ts);
                     OnPropertyChanged(nameof(ScheduleSunsetTime));
+                    OnPropertyChanged(nameof(ScheduleSunsetStr));
                 }
                 SaveCurrentDeviceConfig();
             }
@@ -668,36 +680,36 @@ namespace WeekAquaWPF.ViewModels
             }
             else if (maxSlots == 12)
             {
-                // 12-Slot Layout (Mode 3 / 5 / 9)
+                // 12-Slot Layout (Mode 3 / 5 / 9) - 11 Daytime slots + 1 Night slot
                 dailyIntensityCurve = new double[]
                 {
-                    0.15, // Slot 1: Dawn
-                    0.35, // Slot 2: Early Sunrise
-                    0.60, // Slot 3: Morning Ramp Up
-                    0.85, // Slot 4: Mid Morning
-                    1.00, // Slot 5: Noon Peak 1
-                    1.00, // Slot 6: Noon Peak 2
-                    0.90, // Slot 7: Afternoon
-                    0.70, // Slot 8: Late Afternoon
-                    0.50, // Slot 9: Early Sunset
-                    0.30, // Slot 10: Sunset
-                    0.15, // Slot 11: Dusk Finish
-                    0.00  // Slot 12: Night Rest / Moonlight
+                    0.15, // Slot 1: Dawn (15%)
+                    0.30, // Slot 2: Early Sunrise (30%)
+                    0.50, // Slot 3: Morning Ramp Up 1 (50%)
+                    0.70, // Slot 4: Morning Ramp Up 2 (70%)
+                    0.85, // Slot 5: Mid Morning (85%)
+                    1.00, // Slot 6: Noon Peak (100%)
+                    0.85, // Slot 7: Early Afternoon (85%)
+                    0.70, // Slot 8: Late Afternoon (70%)
+                    0.50, // Slot 9: Early Sunset (50%)
+                    0.30, // Slot 10: Sunset (30%)
+                    0.15, // Slot 11: Dusk Finish (15%)
+                    0.00  // Slot 12: Night Rest / Moonlight (0%)
                 };
             }
             else
             {
-                // 8-Slot Layout (Standard / Safe for all models)
+                // 8-Slot Layout (Standard / M800 Pro / Safe for all models) - 7 Daytime slots + 1 Night slot
                 dailyIntensityCurve = new double[]
                 {
-                    0.20, // Slot 1: Sunrise Start
-                    0.65, // Slot 2: Morning Ramp Up
-                    1.00, // Slot 3: Noon Peak 1
-                    1.00, // Slot 4: Afternoon Peak 2
-                    0.75, // Slot 5: Afternoon Ramp Down
-                    0.45, // Slot 6: Sunset Start
-                    0.15, // Slot 7: Sunset Finish
-                    0.00, // Slot 8: Night Rest / Moonlight
+                    0.20, // Slot 1: Sunrise Start (20%)
+                    0.50, // Slot 2: Morning Ramp Up 1 (50%)
+                    0.75, // Slot 3: Morning Ramp Up 2 (75%)
+                    1.00, // Slot 4: Noon Peak (100%)
+                    0.75, // Slot 5: Afternoon Ramp Down 1 (75%)
+                    0.50, // Slot 6: Sunset Ramp Down 2 (50%)
+                    0.20, // Slot 7: Sunset Finish (20%)
+                    0.00, // Slot 8: Night Rest / Moonlight (0%)
                     0.00, 0.00, 0.00, 0.00 // Slots 9~12: Disabled
                 };
             }
@@ -781,13 +793,13 @@ namespace WeekAquaWPF.ViewModels
             // Natural 8-slot Sunrise/Sunset Cycle (08:00 ~ 20:00 Photoperiod + 20:00 ~ 08:00 Night Rest)
             var defaultSlots = new (TimeSpan Start, TimeSpan End, double R, double G, double B, double W, bool Active)[]
             {
-                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 30, 0),  20, 10, 15, 10, false), // 1: 🌅 Sunrise Start (20%)
-                (new TimeSpan(9, 30, 0),  new TimeSpan(11, 20, 0), 50, 40, 50, 35, false), // 2: 🌄 Morning Ramp Up (65%)
-                (new TimeSpan(11, 20, 0), new TimeSpan(14, 35, 0), 70, 65, 70, 55, false), // 3: ☀️ Noon Peak 1 (100%)
-                (new TimeSpan(14, 35, 0), new TimeSpan(17, 0, 0),  70, 65, 70, 55, false), // 4: ☀️ Afternoon Peak 2 (100%)
-                (new TimeSpan(17, 0, 0),  new TimeSpan(18, 35, 0), 60, 50, 60, 45, false), // 5: 🌤️ Afternoon Ramp Down (75%)
-                (new TimeSpan(18, 35, 0), new TimeSpan(19, 30, 0), 40, 20, 30, 15, false), // 6: 🌇 Sunset Start (45%)
-                (new TimeSpan(19, 30, 0), new TimeSpan(20, 0, 0),  10, 5,  15, 5,  false), // 7: 🌙 Sunset Finish (15%) -> Completes at 20:00!
+                (new TimeSpan(8, 0, 0),   new TimeSpan(9, 45, 0),  14, 13, 14, 11, false), // 1: 🌅 Sunrise Start (20%)
+                (new TimeSpan(9, 45, 0),  new TimeSpan(11, 30, 0), 35, 32, 35, 28, false), // 2: 🌄 Morning Ramp Up 1 (50%)
+                (new TimeSpan(11, 30, 0), new TimeSpan(13, 15, 0), 52, 49, 52, 41, false), // 3: ☀️ Morning Ramp Up 2 (75%)
+                (new TimeSpan(13, 15, 0), new TimeSpan(14, 45, 0), 70, 65, 70, 55, false), // 4: ☀️ Noon Peak (100%)
+                (new TimeSpan(14, 45, 0), new TimeSpan(16, 30, 0), 52, 49, 52, 41, false), // 5: 🌤️ Afternoon Ramp Down 1 (75%)
+                (new TimeSpan(16, 30, 0), new TimeSpan(18, 15, 0), 35, 32, 35, 28, false), // 6: 🌇 Sunset Ramp Down 2 (50%)
+                (new TimeSpan(18, 15, 0), new TimeSpan(20, 0, 0),  14, 13, 14, 11, false), // 7: 🌙 Sunset Finish (20%) -> Completes at 20:00!
                 (new TimeSpan(20, 0, 0),  new TimeSpan(8, 0, 0),   0,  0,  4,  0,  false), // 8: 🌑 Night Rest / Moonlight (Covers 20:00 ~ 08:00)
                 (new TimeSpan(0, 0, 0),   new TimeSpan(0, 0, 0),   0,  0,  0,  0,  false), // 9: (Disabled)
                 (new TimeSpan(0, 0, 0),   new TimeSpan(0, 0, 0),   0,  0,  0,  0,  false), // 10: (Disabled)
@@ -1192,10 +1204,112 @@ namespace WeekAquaWPF.ViewModels
             SaveCurrentDeviceConfig();
         }
 
-        private static TimeSpan AddHoursMod24(TimeSpan baseTime, double hoursToAdd)
+        public static (TimeSpan Start, TimeSpan End)[] CalculateAutoSlotTimes(TimeSpan sunrise, TimeSpan sunset, int maxSlots)
         {
-            double baseMinutes = (baseTime.Hours * 60.0) + baseTime.Minutes;
-            double totalMinutes = baseMinutes + (hoursToAdd * 60.0);
+            var slotTimes = new (TimeSpan Start, TimeSpan End)[12];
+            for (int i = 0; i < 12; i++)
+            {
+                slotTimes[i] = (TimeSpan.Zero, TimeSpan.Zero);
+            }
+
+            if (maxSlots < 1) maxSlots = 8;
+            int daySlotCount = maxSlots - 1;
+            int nightSlotIndex = maxSlots - 1;
+
+            // Normalize sunrise midnight to 00:00
+            TimeSpan t0 = sunrise.TotalHours == 24.0 ? TimeSpan.Zero : new TimeSpan(sunrise.Hours, sunrise.Minutes, 0);
+
+            // Normalize sunset
+            TimeSpan tSunset = sunset;
+            if (tSunset == TimeSpan.Zero && t0 > TimeSpan.Zero)
+            {
+                tSunset = TimeSpan.FromHours(24);
+            }
+            else if (tSunset.TotalHours != 24.0)
+            {
+                tSunset = new TimeSpan(sunset.Hours, sunset.Minutes, 0);
+            }
+
+            bool isFullCycle = (t0 == tSunset || (t0 == TimeSpan.Zero && tSunset.TotalHours == 24.0));
+            bool crossesMidnight = (!isFullCycle && tSunset.TotalHours < t0.TotalHours);
+
+            if (isFullCycle)
+            {
+                // 24-Hour full day cycle
+                double totalMinutes = 24.0 * 60.0;
+                double step = totalMinutes / daySlotCount;
+                for (int i = 0; i < daySlotCount; i++)
+                {
+                    double mStart = (t0.TotalMinutes + (i * step)) % (24.0 * 60.0);
+                    double mEnd = (t0.TotalMinutes + ((i + 1) * step)) % (24.0 * 60.0);
+                    TimeSpan s = MinutesToTimeSpan(mStart);
+                    TimeSpan e = (i == daySlotCount - 1 && t0 == TimeSpan.Zero) ? TimeSpan.FromHours(24) : MinutesToTimeSpan(mEnd);
+                    slotTimes[i] = (s, e);
+                }
+                slotTimes[nightSlotIndex] = (slotTimes[daySlotCount - 1].End == TimeSpan.FromHours(24) ? TimeSpan.Zero : slotTimes[daySlotCount - 1].End, t0);
+            }
+            else if (crossesMidnight)
+            {
+                // Photoperiod crosses midnight (e.g. 18:00 ~ 02:00)
+                double minutesBefore = (24.0 * 60.0) - t0.TotalMinutes; // e.g. 18:00 -> 24:00 (360 mins)
+                double minutesAfter = tSunset.TotalMinutes;             // e.g. 00:00 -> 02:00 (120 mins)
+                double totalPhotoperiodMinutes = minutesBefore + minutesAfter;
+
+                int slotsBefore = (int)Math.Round(daySlotCount * (minutesBefore / totalPhotoperiodMinutes));
+                slotsBefore = Math.Clamp(slotsBefore, 1, daySlotCount - 1);
+                int slotsAfter = daySlotCount - slotsBefore;
+
+                // Day 1 Slots (Sunrise -> 24:00)
+                double stepBefore = minutesBefore / slotsBefore;
+                for (int i = 0; i < slotsBefore; i++)
+                {
+                    double mStart = t0.TotalMinutes + (i * stepBefore);
+                    double mEnd = t0.TotalMinutes + ((i + 1) * stepBefore);
+                    TimeSpan s = MinutesToTimeSpan(mStart);
+                    TimeSpan e = (i == slotsBefore - 1) ? TimeSpan.FromHours(24) : MinutesToTimeSpan(mEnd);
+                    slotTimes[i] = (s, e);
+                }
+
+                // Day 2 Slots (00:00 -> Sunset)
+                double stepAfter = minutesAfter / slotsAfter;
+                for (int j = 0; j < slotsAfter; j++)
+                {
+                    int slotIdx = slotsBefore + j;
+                    double mStart = j * stepAfter;
+                    double mEnd = (j + 1) * stepAfter;
+                    TimeSpan s = (j == 0) ? TimeSpan.Zero : MinutesToTimeSpan(mStart);
+                    TimeSpan e = (j == slotsAfter - 1) ? tSunset : MinutesToTimeSpan(mEnd);
+                    slotTimes[slotIdx] = (s, e);
+                }
+
+                // Night Slot: Sunset -> Sunrise
+                slotTimes[nightSlotIndex] = (tSunset, t0);
+            }
+            else
+            {
+                // Same-day photoperiod (e.g. 08:00 ~ 20:00 or 16:00 ~ 24:00)
+                double photoperiodMinutes = (tSunset - t0).TotalMinutes;
+                double step = photoperiodMinutes / daySlotCount;
+
+                for (int i = 0; i < daySlotCount; i++)
+                {
+                    double mStart = t0.TotalMinutes + (i * step);
+                    double mEnd = t0.TotalMinutes + ((i + 1) * step);
+                    TimeSpan s = MinutesToTimeSpan(mStart);
+                    TimeSpan e = (i == daySlotCount - 1) ? tSunset : MinutesToTimeSpan(mEnd);
+                    slotTimes[i] = (s, e);
+                }
+
+                // Night Slot: Sunset -> Sunrise (if sunset is 24:00, night starts at 00:00)
+                TimeSpan nightStart = (tSunset.TotalHours == 24.0) ? TimeSpan.Zero : tSunset;
+                slotTimes[nightSlotIndex] = (nightStart, t0);
+            }
+
+            return slotTimes;
+        }
+
+        private static TimeSpan MinutesToTimeSpan(double totalMinutes)
+        {
             double modMinutes = totalMinutes % (24.0 * 60.0);
             if (modMinutes < 0) modMinutes += 24.0 * 60.0;
             int h = (int)(modMinutes / 60.0) % 24;
@@ -1208,115 +1322,33 @@ namespace WeekAquaWPF.ViewModels
         {
             if (WeekAquaProtocol.TryParseTimeString(ScheduleSunriseStr, out TimeSpan sunriseTime))
             {
+                if (sunriseTime.TotalHours == 24.0) sunriseTime = TimeSpan.Zero;
                 ScheduleSunriseTime = sunriseTime;
             }
             if (WeekAquaProtocol.TryParseTimeString(ScheduleSunsetStr, out TimeSpan sunsetTime))
             {
+                if (sunsetTime == TimeSpan.Zero && ScheduleSunriseTime > TimeSpan.Zero)
+                {
+                    sunsetTime = TimeSpan.FromHours(24);
+                }
                 ScheduleSunsetTime = sunsetTime;
             }
 
+            int maxSlots = ScheduleSlotLimit;
+            var slotTimes = CalculateAutoSlotTimes(ScheduleSunriseTime, ScheduleSunsetTime, maxSlots);
+
             double totalHours;
-            if (ScheduleSunriseTime == ScheduleSunsetTime)
+            if (ScheduleSunriseTime == ScheduleSunsetTime || (ScheduleSunriseTime == TimeSpan.Zero && ScheduleSunsetTime.TotalHours == 24.0))
             {
-                // Identical times -> 24-hour full photoperiod cycle
                 totalHours = 24.0;
             }
             else if (ScheduleSunsetTime > ScheduleSunriseTime)
             {
-                // Same-day photoperiod (e.g., 08:00 to 20:00)
                 totalHours = (ScheduleSunsetTime - ScheduleSunriseTime).TotalHours;
             }
             else
             {
-                // Midnight-crossing photoperiod (e.g., 18:00 to 02:00)
-                totalHours = 24.0 - (ScheduleSunriseTime - ScheduleSunsetTime).TotalHours;
-            }
-
-            // Continuous 24-hour cycle layout without artificial 00:00 / 24:00 cuts
-            TimeSpan t0 = new TimeSpan(ScheduleSunriseTime.Hours, ScheduleSunriseTime.Minutes, 0);
-            TimeSpan tSunset = new TimeSpan(ScheduleSunsetTime.Hours, ScheduleSunsetTime.Minutes, 0);
-
-            int maxSlots = ScheduleSlotLimit;
-            (TimeSpan Start, TimeSpan End)[] slotTimes;
-
-            if (maxSlots == 5)
-            {
-                // 5-Slot Layout (4 Day slots + 1 Night slot)
-                double r1 = totalHours * 0.15;
-                double r2 = totalHours * 0.45;
-                double r3 = totalHours * 0.80;
-
-                slotTimes = new (TimeSpan Start, TimeSpan End)[]
-                {
-                    (t0, AddHoursMod24(t0, r1)),
-                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
-                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
-                    (AddHoursMod24(t0, r3), tSunset),
-                    (tSunset, t0),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero)
-                };
-            }
-            else if (maxSlots == 12)
-            {
-                // 12-Slot Layout (11 Day slots + 1 Night slot)
-                double r1 = totalHours * 0.08;
-                double r2 = totalHours * 0.18;
-                double r3 = totalHours * 0.30;
-                double r4 = totalHours * 0.44;
-                double r5 = totalHours * 0.58;
-                double r6 = totalHours * 0.70;
-                double r7 = totalHours * 0.80;
-                double r8 = totalHours * 0.88;
-                double r9 = totalHours * 0.94;
-                double r10 = totalHours * 0.98;
-
-                slotTimes = new (TimeSpan Start, TimeSpan End)[]
-                {
-                    (t0, AddHoursMod24(t0, r1)),
-                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
-                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
-                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),
-                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),
-                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),
-                    (AddHoursMod24(t0, r6), AddHoursMod24(t0, r7)),
-                    (AddHoursMod24(t0, r7), AddHoursMod24(t0, r8)),
-                    (AddHoursMod24(t0, r8), AddHoursMod24(t0, r9)),
-                    (AddHoursMod24(t0, r9), AddHoursMod24(t0, r10)),
-                    (AddHoursMod24(t0, r10), tSunset),
-                    (tSunset, t0)
-                };
-            }
-            else
-            {
-                // 8-Slot Layout (7 Day slots + 1 Night slot)
-                double r1 = totalHours * 0.12;
-                double r2 = totalHours * 0.28;
-                double r3 = totalHours * 0.55;
-                double r4 = totalHours * 0.75;
-                double r5 = totalHours * 0.88;
-                double r6 = totalHours * 0.96;
-
-                slotTimes = new (TimeSpan Start, TimeSpan End)[]
-                {
-                    (t0, AddHoursMod24(t0, r1)),
-                    (AddHoursMod24(t0, r1), AddHoursMod24(t0, r2)),
-                    (AddHoursMod24(t0, r2), AddHoursMod24(t0, r3)),
-                    (AddHoursMod24(t0, r3), AddHoursMod24(t0, r4)),
-                    (AddHoursMod24(t0, r4), AddHoursMod24(t0, r5)),
-                    (AddHoursMod24(t0, r5), AddHoursMod24(t0, r6)),
-                    (AddHoursMod24(t0, r6), tSunset),
-                    (tSunset, t0),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero),
-                    (TimeSpan.Zero, TimeSpan.Zero)
-                };
+                totalHours = (24.0 - ScheduleSunriseTime.TotalHours) + ScheduleSunsetTime.TotalHours;
             }
 
             int nightSlotIndex = maxSlots - 1;
