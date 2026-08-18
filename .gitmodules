@@ -1,0 +1,3 @@
+[submodule "ha-weekaqua"]
+	path = ha-weekaqua
+	url = https://github.com/ad960009/ha-weekaqua.git
