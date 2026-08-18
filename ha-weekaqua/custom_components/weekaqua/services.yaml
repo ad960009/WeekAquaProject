@@ -1,0 +1,106 @@
+apply_preset:
+  name: Apply Spectrum Preset
+  description: Apply a predefined spectrum preset to the WeekAqua light.
+  fields:
+    device_id:
+      name: Device
+      description: The WeekAqua light device.
+      required: true
+      selector:
+        device:
+          integration: weekaqua
+    preset:
+      name: Preset Name
+      description: Spectrum preset to apply.
+      required: true
+      selector:
+        select:
+          options:
+            - GreenGrass
+            - RedGrass
+            - FishMixed
+            - Shrimp
+            - Fish
+            - CoralAb
+            - CoralLps
+            - CoralSps
+            - MarineFot
+            - Moonlight
+
+set_spectrum:
+  name: Set Manual Spectrum
+  description: Set custom channel intensities (0-100%).
+  fields:
+    device_id:
+      name: Device
+      required: true
+      selector:
+        device:
+          integration: weekaqua
+    red:
+      name: Red %
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    green:
+      name: Green %
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    blue:
+      name: Blue %
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    white:
+      name: White %
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    uv:
+      name: UV / UVA %
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+    violet:
+      name: Violet / UV2 %
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+
+set_schedule:
+  name: Set Unlimited Dynamic Schedule
+  description: Upload a list of time waypoints for smooth 24-hour dynamic photoperiod.
+  fields:
+    device_id:
+      name: Device
+      required: true
+      selector:
+        device:
+          integration: weekaqua
+    points:
+      name: Waypoints List
+      description: List of waypoints with time (HH:MM) and channel percentages (r, g, b, w, uv, v).
+      required: true
+
+sync_rtc:
+  name: Sync Real-Time Clock (RTC)
+  description: Synchronize PC/HA server clock to WeekAqua light hardware RTC.

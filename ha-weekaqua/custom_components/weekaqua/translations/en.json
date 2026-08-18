@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect WeekAqua Bluetooth Light",
+        "description": "Select a discovered WeekAqua light or enter its Bluetooth MAC address manually.",
+        "data": {
+          "mac": "Bluetooth MAC Address",
+          "name": "Custom Name"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Discovered WeekAqua Device",
+        "description": "Found WeekAqua device: {name} ({address}). Do you want to add it?",
+        "data": {
+          "name": "Device Name"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This WeekAqua device is already configured."
+    }
+  }
+}

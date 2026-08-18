@@ -1,6 +1,6 @@
-# WeekAqua BLE Protocol Specification & C# WPF Controller
+# WeekAqua BLE Protocol Suite: Windows WPF Controller & Home Assistant Integration
 
-WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바이스의 BLE(Bluetooth Low Energy) 통신 프로토콜 역공학 명세서 및 C# WPF 기반 Windows 전용 제어 프로그램입니다.
+WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바이스의 BLE(Bluetooth Low Energy) 통신 프로토콜 역공학 명세서, C# WPF 기반 Windows 전용 제어 프로그램, 그리고 **Home Assistant 전용 Custom Integration & Lovelace UI 카드** 모음입니다.
 
 > [!WARNING]
 > **⚠️ 주의사항 (Disclaimer)**  
@@ -21,6 +21,9 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
   - 자정 24:00 (`0x24 0x00`) 무암전(Gapless) 연속 점등 및 스케줄 전송 시 RTC 시계(`0xFF`) 자동 선행 동기화
   - 비활성화 슬롯 자동 초기화 및 스케줄 모드 활성화(`FDF2`) 자동 연동
   - 슬롯 시간 역전/중복 방지 실시간 유효성 검사 (Batch Validation)
+- 🏠 **Home Assistant 무제한 단계 동적 스케줄러 (Unlimited Steps)**
+  - MCU 슬롯 제한(5/8/12) 없이 원하는 만큼 스케줄 단계를 무제한 구성
+  - HA 실시간 선형 보간(Linear Ramp) 엔진 및 ESPHome Bluetooth Proxy 완벽 지원
 - ⚡ **실시간 안전 전력 상한선 (Max Power Limit) 가드**
   - 안드로이드 공식 전력 공식(4CH, 5CH, 6CH, 7CH+) 적용
   - $100.0\%$ 초과 시 색상비율을 보존하며 비례 축소하는 자동 정규화(Normalize) 기능
@@ -35,37 +38,32 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
 
 ---
 
-## 📂 프로젝트 구성
+## 📂 프로젝트 구성 (Project Structure)
 
 - 📄 **[WeekAqua_BLE_Protocol_Specification.md](WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 APK 분석 기반의 상세 BLE 통신 프로토콜 명세서
 - 💻 **[WeekAquaWPF/](WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션 (GUI 및 CLI 동시 지원)
   - 상세 가이드: [WeekAquaWPF/README.md](WeekAquaWPF/README.md)
+- 🏠 **[ha-weekaqua/](ha-weekaqua/)**: Home Assistant Custom Integration (HACS) 및 Lovelace 커스텀 UI 카드
+  - 상세 가이드: [ha-weekaqua/README.md](ha-weekaqua/README.md)
 
 ---
 
 ## 🚀 빠른 시작 (Quick Start)
 
-### 요구 사항
-- **OS**: Windows 10 (버전 2004 / 빌드 19041 이상) 또는 Windows 11
-- **SDK**: .NET 10.0 SDK (또는 .NET 8.0/9.0)
-- **하드웨어**: Bluetooth 4.0 이상 지원 블루투스 어댑터
-
-### 실행 및 빌드
-
+### 1. Windows Desktop (WeekAquaWPF)
 ```powershell
-# 프로젝트 디렉터리로 이동
 cd WeekAquaWPF
 
-# 1. GUI 모드로 실행
+# GUI 모드로 실행
 dotnet run
 
-# 2. CLI 모드로 실행 (예: 도움말 출력)
+# CLI 모드로 실행 (예: 도움말)
 dotnet run -- --help
-
-# 3. CLI 타이머 스케줄 전송 예시 (30분 점등 후 자동 꺼짐)
-dotnet run -- set-timer -m DC:12:34:56:78:9A -d 30 -r 80 -g 60 -b 50 -w 30
-
-# 4. 단일 실행 파일(.exe) 원클릭 배포 (Self-Contained & Framework-Dependent 2종 자동 생성)
-publish.bat
 ```
+
+### 2. Home Assistant (ha-weekaqua)
+- `ha-weekaqua/custom_components/weekaqua` 폴더를 HA `custom_components/`로 복사
+- `ha-weekaqua/dist/weekaqua-card.js` 파일을 HA `www/`로 복사 후 대시보드 카드 등록
+- 상세 매뉴얼: [ha-weekaqua/README.md](ha-weekaqua/README.md)
+
 

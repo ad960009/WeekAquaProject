@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WeekAqua 블루투스 조명 연결",
+        "description": "검색된 WeekAqua 조명을 선택하거나 블루투스 MAC 주소를 직접 입력하세요.",
+        "data": {
+          "mac": "블루투스 MAC 주소",
+          "name": "기기 이름"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "WeekAqua 기기 발견",
+        "description": "발견된 WeekAqua 기기: {name} ({address}). 추가하시겠습니까?",
+        "data": {
+          "name": "기기 이름"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "이미 등록된 WeekAqua 기기입니다."
+    }
+  }
+}

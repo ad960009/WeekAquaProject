@@ -1,0 +1,23 @@
+{
+  "domain": "weekaqua",
+  "name": "WeekAqua Aquarium Light",
+  "codeowners": ["@ad960009"],
+  "config_flow": true,
+  "documentation": "https://github.com/ad960009/ha-weekaqua",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ad960009/ha-weekaqua/issues",
+  "requirements": [
+    "bleak>=0.21.0"
+  ],
+  "dependencies": [
+    "bluetooth"
+  ],
+  "bluetooth": [
+    {
+      "service_uuid": "00010203-0405-0607-0809-0a0b0c0d1911",
+      "connectable": true
+    }
+  ],
+  "version": "1.0.0"
+}
