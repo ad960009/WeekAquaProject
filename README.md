@@ -29,13 +29,15 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
   - MAC 주소별 색상, 팬 속도, 일출일몰, 스케줄 설정을 `%AppData%\WeekAquaWPF\device_config.json`에 자동 저장/로드
 - 🔌 **스마트 플러그 전력 모니터링**
   - GATT Notify를 통한 누적 전력량(kWh) 실시간 디코딩 및 UI 표출
+- 💻 **CLI(명령줄 인터페이스) 무인 자동화 지원**
+  - GUI 창 없이 기기 검색(`scan`), RTC 시계 동기화(`sync-rtc`), 실시간 밝기 조절(`set-spectrum`), 지정 시간 점등 후 자동 소등(`set-timer`), 프리셋 적용(`set-preset`), 팬 속도 조절(`set-fan`) 지원
 
 ---
 
 ## 📂 프로젝트 구성
 
 - 📄 **[WeekAqua_BLE_Protocol_Specification.md](WeekAqua_BLE_Protocol_Specification.md)**: 안드로이드 APK 분석 기반의 상세 BLE 통신 프로토콜 명세서
-- 💻 **[WeekAquaWPF/](WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션
+- 💻 **[WeekAquaWPF/](WeekAquaWPF/)**: .NET 10.0 WPF 기반 Windows 제어 애플리케이션 (GUI 및 CLI 동시 지원)
   - 상세 가이드: [WeekAquaWPF/README.md](WeekAquaWPF/README.md)
 
 ---
@@ -53,10 +55,16 @@ WeekAqua(위크아쿠아) 스마트 수초 조명 및 스마트 플러그 디바
 # 프로젝트 디렉터리로 이동
 cd WeekAquaWPF
 
-# 1. 개발 모드 빌드 및 실행
+# 1. GUI 모드로 실행
 dotnet run
 
-# 2. 단일 실행 파일(.exe) 원클릭 배포 (Self-Contained & Framework-Dependent 2종 자동 생성)
+# 2. CLI 모드로 실행 (예: 도움말 출력)
+dotnet run -- --help
+
+# 3. CLI 타이머 스케줄 전송 예시 (30분 점등 후 자동 꺼짐)
+dotnet run -- set-timer -m DC:12:34:56:78:9A -d 30 -r 80 -g 60 -b 50 -w 30
+
+# 4. 단일 실행 파일(.exe) 원클릭 배포 (Self-Contained & Framework-Dependent 2종 자동 생성)
 publish.bat
 ```
 

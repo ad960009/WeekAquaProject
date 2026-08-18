@@ -1,6 +1,7 @@
 using System.Configuration;
 using System.Data;
 using System.Windows;
+using WeekAquaWPF.CLI;
 
 namespace WeekAquaWPF;
 
@@ -9,10 +10,23 @@ namespace WeekAquaWPF;
 /// </summary>
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        WeekAquaWPF.Protocol.ProtocolTests.RunVerification();
+
+        if (e.Args.Length > 0)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            int exitCode = await CliRunner.RunAsync(e.Args);
+            Shutdown(exitCode);
+        }
+        else
+        {
+            WeekAquaWPF.Protocol.ProtocolTests.RunVerification();
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            var mainWindow = new MainWindow();
+            mainWindow.Show();
+        }
     }
 }
 

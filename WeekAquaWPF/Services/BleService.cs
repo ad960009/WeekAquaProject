@@ -206,6 +206,8 @@ namespace WeekAquaWPF.Services
                     _isVirtualConnected = true;
                     LogMessage?.Invoke(LogDirection.Info, $"Connected to Virtual Demo Device ({FormatMacAddress(bluetoothAddress)}).", null);
                     ConnectionStateChanged?.Invoke(true, "Connected (Virtual Mode)");
+                    EnqueueWritePacket(WeekAquaProtocol.BuildRtcSyncPacket(DateTime.Now), "Initial RTC Sync");
+                    EnqueueWritePacket(WeekAquaProtocol.BuildStateInitPacket(), "State Reset (F0)");
                     return true;
                 }
 
@@ -454,7 +456,35 @@ namespace WeekAquaWPF.Services
             }
         }
 
-        private static string FormatMacAddress(ulong address)
+        public static ulong ParseMacAddress(string mac)
+        {
+            if (string.IsNullOrWhiteSpace(mac))
+                throw new ArgumentException("MAC address cannot be empty.", nameof(mac));
+
+            string cleaned = mac.Replace(":", "").Replace("-", "").Trim();
+            if (cleaned.Length != 12)
+                throw new FormatException($"Invalid MAC address format: '{mac}'. Expected 12 hex digits (e.g. AA:BB:CC:DD:EE:FF).");
+
+            return ulong.Parse(cleaned, System.Globalization.NumberStyles.HexNumber);
+        }
+
+        public async Task FlushQueueAsync(int timeoutMs = 10000)
+        {
+            var start = DateTime.UtcNow;
+            while (!_writeQueue.IsEmpty)
+            {
+                if ((DateTime.UtcNow - start).TotalMilliseconds > timeoutMs)
+                {
+                    LogMessage?.Invoke(LogDirection.Error, "FlushQueueAsync timed out waiting for packets to send.", null);
+                    break;
+                }
+                await Task.Delay(100);
+            }
+            // Additional delay to ensure last BLE write frame completes on MCU
+            await Task.Delay(300);
+        }
+
+        public static string FormatMacAddress(ulong address)
         {
             string hex = address.ToString("X12");
             return string.Join(":", Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));

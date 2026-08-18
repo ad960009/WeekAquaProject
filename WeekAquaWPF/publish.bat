@@ -47,5 +47,4 @@ echo  - Framework-Dependent Exe:  %OUTPUT_DIR%\FrameworkDependent\WeekAquaWPF.ex
 echo  - Self-Contained ZIP:       %OUTPUT_DIR%\WeekAquaWPF-win-x64-SelfContained.zip
 echo  - Framework-Dependent ZIP:  %OUTPUT_DIR%\WeekAquaWPF-win-x64-FrameworkDependent.zip
 echo =================================================
-echo.
-pause
+if /i "%~1" neq "--no-pause" if /i "%~1" neq "/nopause" pause

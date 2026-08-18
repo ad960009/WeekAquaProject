@@ -65,24 +65,27 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 Windows
 
 ```text
 WeekAquaWPF/
+├── CLI/
+│   └── CliRunner.cs           # 명령줄 인수 파싱, Win32 콘솔 부착, 자동화 CLI 실행 엔진
+├── Models/
+│   ├── BleDeviceInfo.cs       # BLE 스캔 기기 정보 모델 (MAC, RSSI, 채널 사양 등)
+│   ├── LogEntry.cs            # 실시간 TX/RX 터미널 로그 모델
+│   └── RampPointSlot.cs       # 12슬롯 스케줄 데이터 모델 및 유효성 검사기
 ├── Protocol/
-│   ├── WeekAquaProtocol.cs    # UUID, BCD 시간 변환, 패킷 빌더, 전력 공식
+│   ├── WeekAquaProtocol.cs    # UUID, BCD 시간 변환, 패킷 빌더, 전력 공식, 체크섬
 │   └── ProtocolTests.cs       # BCD 인코딩 및 패킷 무결성 단위 검증
 ├── Services/
-│   ├── BleService.cs          # Windows Native BLE 스캔/연결/500ms 딜레이 큐
-│   └── SettingsManager.cs     # AppData 로컬 JSON 설정 입출력 관리자
-├── Models/
-│   ├── RampPointSlot.cs       # 12슬롯 스케줄 데이터 모델 및 유효성 검사기
-│   ├── BleDeviceInfo.cs       # BLE 스캔 기기 정보 모델
-│   ├── DeviceConfig.cs        # JSON 직렬화용 설정 모델
-│   └── LogEntry.cs            # 실시간 TX/RX 터미널 로그 모델
+│   ├── BleService.cs          # Windows Native BLE 스캔/연결/GATT 통신/500ms 딜레이 큐
+│   └── SettingsManager.cs     # AppData 로컬 JSON 설정 입출력 및 DeviceConfig 관리자
 ├── ViewModels/
-│   ├── MainViewModel.cs       # WPF MVVM 데이터 바인딩 및 커맨드 로직
+│   ├── MainViewModel.cs       # WPF MVVM 데이터 바인딩 및 커맨드/스펙트럼 로직
 │   └── RelayCommand.cs        # WPF ICommand 구현체
 ├── MainWindow.xaml            # 현대적인 다크 테마 Glassmorphism UI
-├── MainWindow.xaml.cs        # 윈도우 라이프사이클 이벤트 핸들러
-├── App.xaml / App.xaml.cs     # 애플리케이션 진입점 및 프로토콜 검증 테스트
-└── WeekAquaWPF.csproj         # .NET 10.0 Windows SDK 프로젝트 파일
+├── MainWindow.xaml.cs         # 윈도우 라이프사이클 이벤트 핸들러
+├── App.xaml / App.xaml.cs     # 애플리케이션 진입점 (인수 유무에 따른 GUI / CLI 모드 자동 분기)
+├── AssemblyInfo.cs            # 어셈블리 메타데이터
+├── WeekAquaWPF.csproj         # .NET 10.0 Windows SDK 프로젝트 파일
+└── publish.bat                # 자체 포함 / 프레임워크 종속 단일 실행 파일(.exe) 배포 스크립트
 ```
 
 ---
@@ -94,14 +97,68 @@ WeekAquaWPF/
 - **SDK**: .NET 10.0 SDK
 - **Hardware**: BLE 지원 Bluetooth 4.0+ 어댑터
 
+### 실행 모드 안내
+- **🖥️ GUI 모드 (기본값)**: **파라미터(인수) 없이 실행하거나 파일 탐색기에서 더블클릭**하면 자동으로 다크 테마의 **WPF GUI 창**이 실행됩니다.
+- **⚡ CLI 모드**: 터미널 또는 스크립트에서 **명령줄 파라미터를 전달하여 실행**하면 콘솔 창이 자동으로 부착(Attach)되어 헤드리스 **CLI 자동화 모드**로 동작합니다.
+
 ### 실행 방법
 
 ```powershell
 # 1. 빌드
 dotnet build WeekAquaWPF.csproj
 
-# 2. 실행
+# 2. GUI 모드 실행 (파라미터 없이 실행)
 dotnet run --project WeekAquaWPF.csproj
+
+# 또는 빌드된 exe 직접 실행
+WeekAquaWPF.exe
+```
+
+---
+
+## 💻 명령줄 인터페이스 (CLI Automation)
+
+`WeekAquaWPF.exe`에 파라미터(명령어)를 지정하여 실행하면 GUI 창을 띄우지 않고 콘솔을 통해 스크립트, 배치 파일, Windows 작업 스케줄러에서 직접 조명을 제어할 수 있는 **CLI 모드**로 동작합니다. (파라미터 없이 실행 시 GUI 모드로 실행)
+
+```powershell
+WeekAquaWPF.exe <command> [options]
+```
+
+### 📋 CLI 지원 명령어 목록
+
+| 명령어 | 옵션 | 설명 |
+| :--- | :--- | :--- |
+| `scan` | `[-t <초>]` | 주변 WeekAqua BLE 기기를 검색하여 MAC, RSSI, 채널 타입을 표로 출력 |
+| `sync-rtc` | `-m <MAC>` | 지정 기기의 RTC 시계를 현재 PC 시각(BCD 포맷)으로 동기화 및 상태 초기화 |
+| `set-spectrum` | `-m <MAC> -r <R> -g <G> -b <B> -w <W> [-u <UV>] [-v <V>]` | 지정 기기의 밝기/스펙트럼을 즉시 전송 (전력 상한 자동 검증) |
+| `set-timer` | `-m <MAC> -d <분> [-r <R> -g <G> -b <B> -w <W> \| -p <프리셋>]` | **현재 시각 + N분 동안 점등 후 자동으로 완전 소등**되는 타이머 스케줄 전송 |
+| `set-preset` | `-m <MAC> -p <프리셋이름>` | Green, RedPlant, Mixed, CoralAB, Moonlight 등 프리셋 즉시 적용 |
+| `set-fan` | `-m <MAC> -s <속도%>` | 쿨링팬 속도(0~100%) 설정 |
+| `--help` | | 전체 CLI 명령어 및 상세 도움말 출력 |
+
+### 💡 CLI 실전 사용 예제 (Examples)
+
+```powershell
+# 1. 주변 기기 5초간 스캔
+WeekAquaWPF.exe scan --timeout 5
+
+# 2. 지정 조명 RTC 시계 동기화
+WeekAquaWPF.exe sync-rtc -m DC:12:34:56:78:9A
+
+# 3. 실시간 RGBW 밝기 설정 (Red 80%, Green 60%, Blue 50%, White 30%)
+WeekAquaWPF.exe set-spectrum -m DC:12:34:56:78:9A -r 80 -g 60 -b 50 -w 30
+
+# 4. 30분간 조명을 켠 후 자동으로 완전히 끄기 (타이머 스케줄)
+WeekAquaWPF.exe set-timer -m DC:12:34:56:78:9A -d 30 -r 80 -g 60 -b 50 -w 30
+
+# 5. 60분간 'Green' 수초 프리셋으로 켠 후 자동 소등
+WeekAquaWPF.exe set-timer -m DC:12:34:56:78:9A -d 60 -p Green
+
+# 6. 프리셋 즉시 적용
+WeekAquaWPF.exe set-preset -m DC:12:34:56:78:9A -p RedPlant
+
+# 7. 쿨링팬 속도 50% 설정
+WeekAquaWPF.exe set-fan -m DC:12:34:56:78:9A -s 50
 ```
 
 ---
@@ -117,7 +174,7 @@ publish.bat
 
 ### 생성되는 단일 실행 파일:
 1. **자체 포함(Self-Contained) 버전** (`publish/SelfContained/WeekAquaWPF.exe`):
-   - .NET 런타임이 설치되지 않은 다른 PC에서도 **추가 설치 없이 더블클릭만으로 실행** 가능 (~70MB)
+   - .NET 런타임이 설치되지 않은 다른 PC에서도 **추가 설치 없이 더블클릭 및 CLI 실행 가능** (~70MB)
 2. **프레임워크 종속(Framework-Dependent) 버전** (`publish/FrameworkDependent/WeekAquaWPF.exe`):
    - .NET 런타임이 설치된 PC에서 사용하는 **초경량 단일 파일** (~25MB)
 
