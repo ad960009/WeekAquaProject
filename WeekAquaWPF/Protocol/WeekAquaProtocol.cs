@@ -15,6 +15,10 @@ namespace WeekAquaWPF.Protocol
         public static readonly Guid WRITE_FFF2   = Guid.Parse("0000fff2-0000-1000-8000-00805f9b34fb");
         public static readonly Guid NOTIFY_FFF1  = Guid.Parse("0000fff1-0000-1000-8000-00805f9b34fb");
 
+        public static readonly Guid SERVICE_FF60 = Guid.Parse("0000ff60-0000-1000-8000-00805f9b34fb");
+        public static readonly Guid WRITE_FF61   = Guid.Parse("0000ff61-0000-1000-8000-00805f9b34fb");
+        public static readonly Guid NOTIFY_FF62  = Guid.Parse("0000ff62-0000-1000-8000-00805f9b34fb");
+
         // Scaling constant for Smart Plug kWh calculation
         public const double POWER_KWH_SCALE = 4.6566128730773926E-8d;
 

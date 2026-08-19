@@ -267,6 +267,14 @@ namespace WeekAquaWPF.Services
                         LogMessage?.Invoke(LogDirection.Info, "Detected FFF0 Primary Service series.", null);
                         break;
                     }
+                    else if (service.Uuid == WeekAquaProtocol.SERVICE_FF60)
+                    {
+                        targetService = service;
+                        targetWriteUuid = WeekAquaProtocol.WRITE_FF61;
+                        targetNotifyUuid = WeekAquaProtocol.NOTIFY_FF62;
+                        LogMessage?.Invoke(LogDirection.Info, "Detected FF60 Primary Service series.", null);
+                        break;
+                    }
                 }
 
                 if (targetService == null)
@@ -279,11 +287,11 @@ namespace WeekAquaWPF.Services
                         {
                             foreach (var c in chars.Characteristics)
                             {
-                                if (c.Uuid == WeekAquaProtocol.WRITE_FFE1 || c.Uuid == WeekAquaProtocol.WRITE_FFF2)
+                                if (c.Uuid == WeekAquaProtocol.WRITE_FFE1 || c.Uuid == WeekAquaProtocol.WRITE_FFF2 || c.Uuid == WeekAquaProtocol.WRITE_FF61)
                                 {
                                     _writeCharacteristic = c;
                                 }
-                                if (c.Uuid == WeekAquaProtocol.NOTIFY_FFE3 || c.Uuid == WeekAquaProtocol.NOTIFY_FFF1)
+                                if (c.Uuid == WeekAquaProtocol.NOTIFY_FFE3 || c.Uuid == WeekAquaProtocol.NOTIFY_FFF1 || c.Uuid == WeekAquaProtocol.NOTIFY_FF62)
                                 {
                                     _notifyCharacteristic = c;
                                 }
