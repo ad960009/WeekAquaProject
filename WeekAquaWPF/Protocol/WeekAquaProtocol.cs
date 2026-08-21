@@ -368,17 +368,20 @@ namespace WeekAquaWPF.Protocol
 
         /// <summary>
         /// Returns the sequence of packets to unlock MCU hardware mode from Mode 2 (Schedule) to Mode 1 (Live Spectrum).
+        /// Enforces exact order: FDF1 (Mode1) -> Spectrum -> FEEF (Timer) -> FEF9 (Timer)
         /// </summary>
-        public static List<byte[]> BuildLiveModeSequence(string modelCode = "", bool is4ChRgbUv = false)
+        public static List<byte[]> BuildLiveModeSequence(byte[] spectrumPacket)
         {
             return new List<byte[]>
             {
-                // 1. Open 24h timer window for 5746/M-series (FEEF 00:00 ~ 24:00) to clear overrides
+                // 1. Switch MCU to Mode 1 (Live Spectrum Output)
+                new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 },
+                // 2. Target Spectrum
+                spectrumPacket,
+                // 3. Open 24h timer window for 5746/M-series (FEEF 00:00 ~ 24:00) to clear overrides
                 new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x24, 0x00, 0x55, 0x55 },
-                // 2. Open 24h timer window (00:00 ~ 24:00, Enabled, Ramp 0h)
-                new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x01, 0x00 },
-                // 3. Switch MCU to Mode 1 (Live Spectrum Output)
-                new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 }
+                // 4. Open 24h timer window (00:00 ~ 24:00, Enabled, Ramp 0h)
+                new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x01, 0x00 }
             };
         }
 

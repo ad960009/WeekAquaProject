@@ -1077,10 +1077,15 @@ namespace WeekAquaWPF.ViewModels
 
         private void SendLiveSpectrum(bool forceModeSequence = false)
         {
+            byte ch4 = UvByte > 0 ? UvByte : WhiteByte;
+            byte[] packet = Is4ChannelRgbUv
+                ? new byte[] { 0xFB, 0xEF, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
+                : WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
+
             if (_currentHardwareMode != 1 || forceModeSequence)
             {
                 _currentHardwareMode = 1;
-                var modePackets = WeekAquaProtocol.BuildLiveModeSequence(CurrentModelCode, Is4ChannelRgbUv);
+                var modePackets = WeekAquaProtocol.BuildLiveModeSequence(packet);
                 foreach (var pkt in modePackets)
                 {
                     string desc = WeekAquaProtocol.DescribePacket(pkt);
@@ -1088,14 +1093,12 @@ namespace WeekAquaWPF.ViewModels
                 }
                 AddLog(LogDirection.Info, "Enqueued Mode 1 transition sequence for Live Manual Spectrum.");
             }
+            else
+            {
+                string specDesc = WeekAquaProtocol.DescribePacket(packet);
+                _bleService.EnqueueWritePacket(packet, specDesc);
+            }
 
-            byte ch4 = UvByte > 0 ? UvByte : WhiteByte;
-            byte[] packet = Is4ChannelRgbUv
-                ? new byte[] { 0xFB, 0xEF, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
-                : WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
-
-            string specDesc = WeekAquaProtocol.DescribePacket(packet);
-            _bleService.EnqueueWritePacket(packet, specDesc);
             SaveCurrentDeviceConfig();
         }
 
