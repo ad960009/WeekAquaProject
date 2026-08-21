@@ -373,9 +373,11 @@ namespace WeekAquaWPF.Protocol
         {
             return new List<byte[]>
             {
-                // 1. Open 24h timer window (00:00 ~ 24:00, Enabled, Ramp 0h)
+                // 1. Open 24h timer window for 5746/M-series (FEEF 00:00 ~ 24:00) to clear overrides
+                new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x24, 0x00, 0x55, 0x55 },
+                // 2. Open 24h timer window (00:00 ~ 24:00, Enabled, Ramp 0h)
                 new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x01, 0x00 },
-                // 2. Switch MCU to Mode 1 (Live Spectrum Output)
+                // 3. Switch MCU to Mode 1 (Live Spectrum Output)
                 new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 }
             };
         }
