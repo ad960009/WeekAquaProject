@@ -371,26 +371,16 @@ namespace WeekAquaWPF.Protocol
         /// </summary>
         public static List<byte[]> BuildLiveModeSequence(string modelCode = "", bool is4ChRgbUv = false)
         {
-            var list = new List<byte[]>
-            {
-                // 1. Switch to Mode 1 (Spectrum / Sunrise-Sunset Mode)
-                new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 }
-            };
+            var list = new List<byte[]>();
 
             if (is4ChRgbUv || modelCode == "5746")
             {
-                // 2. Activate Spectrum Sub-mode
+                // Mode 1 Sub-mode prepare
                 list.Add(new byte[] { 0xFD, 0xF4, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
-                // 3. Set full day time window (00:00 - 23:59) so timer doesn't shut down LEDs
-                list.Add(new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x23, 0x59, 0x00, 0x00 });
-                // 4. Enable hardware power switch (F6F1: Switch ON / Light output enabled)
-                list.Add(new byte[] { 0xF6, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
             }
-            else
-            {
-                // Legacy full day time window (00:00 - 24:00)
-                list.Add(new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00 });
-            }
+
+            // Switch to Mode 1 (Spectrum / Live Manual Output)
+            list.Add(new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
 
             return list;
         }
