@@ -383,8 +383,8 @@ namespace WeekAquaWPF.Protocol
                 list.Add(new byte[] { 0xFD, 0xF4, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
                 // 3. Set full day time window (00:00 - 23:59) so timer doesn't shut down LEDs
                 list.Add(new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x23, 0x59, 0x00, 0x00 });
-                // 4. Disable hardware timer switch (Instant live manual output)
-                list.Add(new byte[] { 0xF6, 0xF2, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
+                // 4. Enable hardware power switch (F6F1: Switch ON / Light output enabled)
+                list.Add(new byte[] { 0xF6, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
             }
             else
             {
@@ -445,8 +445,8 @@ namespace WeekAquaWPF.Protocol
             }
             if (p0 == 0xF6)
             {
-                string state = p1 == 0xF1 ? "ON" : (p1 == 0xF2 ? "OFF (Manual)" : $"0x{p1:X2}");
-                return $"TimerSwitch [F6{p1:X2}] ({state})";
+                string state = p1 == 0xF1 ? "ON (Power Enabled)" : (p1 == 0xF2 ? "OFF (Power Disabled)" : $"0x{p1:X2}");
+                return $"PowerSwitch [F6{p1:X2}] ({state})";
             }
             if (p0 == 0xF0) return "InitHandshake [F0]";
             return $"Cmd 0x{p0:X2} 0x{p1:X2}";

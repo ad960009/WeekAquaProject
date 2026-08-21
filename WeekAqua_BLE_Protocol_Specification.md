@@ -87,9 +87,9 @@ WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **0000FFE0 시�
   * `FBEF` + `[R]` + `[G]` + `[B]` + `[UV]` + `5555`
 * **쿨링팬 속도 패킷 (`F9`)**:
   * `F9` + `[Fan(1B: 0~235)]` + `555555555555`
-* **타이머 ON/OFF 스위치 패킷 (`F6`)**:
-  * 타이머 OFF: `F6F2555555555555`
-  * 타이머 ON: `F6F1555555555555`
+* **하드웨어 전원/타이머 ON/OFF 스위치 패킷 (`F6`)**:
+  * 전원 ON / 점등 활성화: `F6F1555555555555` (`StringOneTools.java: getModeSettingSwitchTime(1)`)
+  * 전원 OFF / 강제 소등: `F6F2555555555555` (`StringOneTools.java: getModeSettingSwitchTime(0)`)
 * **모드 설정 시간 패킷 (`FEEF`)**:
   * `FEEF` + `BCD[StartHH]` + `BCD[Startmm]` + `BCD[EndHH]` + `BCD[Endmm]` + `5555`
 
