@@ -1,41 +1,41 @@
-# WeekAqua BLE 통신 프로토콜 명세서 (통합 개정판)
+# WeekAqua BLE 통신 프로토콜 명세서 (통합 완결판)
 
-본 문서는 WeekAqua(Week Aqua) 스마트 수초/해수 조명 및 관련 디바이스(스마트 플러그, 수류 모터 등)의 공식 안드로이드 앱(`com.weekled.weekaquas` v3.0.25) 디컴파일 소스 코드를 역분석하여 작성된 통합 BLE(Bluetooth Low Energy) 통신 프로토콜 명세서입니다.
+본 문서는 WeekAqua(Week Aqua) 스마트 수초/해수 조명 및 관련 디바이스(스마트 플러그, 수류 모터 등)의 공식 안드로이드 APK(`com.weekled.weekaquas` v3.0.25) 디컴파일 소스 코드(Kotlin/Java)를 전면 역분석하여 작성된 **완전한 BLE(Bluetooth Low Energy) 통신 프로토콜 통합 명세서**입니다.
 
 ---
 
 ## 1. 블루투스 식별자 (UUID) 및 통신 인프라
 
 ### (1) Service 및 Characteristic UUID 명세
-WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **0000FFE0 시리즈**와 **0000FFF0 시리즈** 두 가지 UUID 세트를 자동 감지하여 통신합니다.
+WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **`0000FFE0` 시리즈**와 **`0000FFF0` 시리즈** 두 가지 UUID 세트를 자동 감지하여 통신합니다.
 
 | 구분 | FFE0 계열 (주력 조명 기기) | FFF0 계열 (호환 기기 / 스마트 플러그) | 속성 (Properties) 및 용도 |
 | :--- | :--- | :--- | :--- |
 | **Service UUID** | `0000ffe0-0000-1000-8000-00805f9b34fb` | `0000fff0-0000-1000-8000-00805f9b34fb` | Primary Service |
-| **Write Characteristic** | `0000ffe1-0000-1000-8000-00805f9b34fb` | `0000fff2-0000-1000-8000-00805f9b34fb` | **Write Without Response / Write** (명령 송신) |
-| **Notify Characteristic** | `0000ffe3-0000-1000-8000-00805f9b34fb` | `0000fff1-0000-1000-8000-00805f9b34fb` | **Notify / Read** (전력 모니터링 수신 등) |
+| **명령 Write Characteristic** | `0000ffe1-0000-1000-8000-00805f9b34fb` (`uuidWrites`) | `0000fff2-0000-1000-8000-00805f9b34fb` | **Write Without Response / Write** (모든 조명 제어 명령 송신) |
+| **기기명 변경 / Notify** | `0000ffe3-0000-1000-8000-00805f9b34fb` (`uuidWriteNames`) | `0000fff1-0000-1000-8000-00805f9b34fb` | **Write** (기기명 변경 `ADV_NAME`) 및 **Notify** (스마트 플러그 전력 수신) |
 
-### (2) 기기 연결 핸드셰이크 (Handshake / Initial Sync)
-1. **GATT Connect**: BLE 기기 연결 성공 확인.
-2. **MTU 협상 (128 Byte)**: 연결 성공 즉시 `gatt.requestMtu(128)`를 호출하여 패킷 MTU를 128 Byte로 확장.
+### (2) 기기 연결 핸드셰이크 흐름 (`RoomViewFiveModel.java`)
+1. **GATT Connect**: BLE 기기 연결 성공 (`onConnectSuccess`).
+2. **MTU 협상 (128 Byte)**: 연결 성공 즉시 `gatt.requestMtu(128)`를 호출하여 패킷 MTU를 128 Byte로 확장 (패킷 분할 방지).
 3. **UUID 수색 및 매핑**: GATT Service 수색 후 `0000ffe1`/`0000ffe3` 또는 `0000fff1`/`0000fff2` UUID를 찾아 전역 테이블에 매핑.
-4. **RTC 시계 보정 (`FF` 패킷)**: 연결 직후 호스트 기기의 현재 시/분/초 시간을 전송하여 조명 RTC 동기화.
+4. **RTC 시계 보정 (`FF` 패킷)**: 연결 직후 호스트 기기의 현재 시/분/초 시간을 전송하여 조명 하드웨어 RTC 동기화.
 5. **Notify 활성화**: 스마트 플러그 기기인 경우 Notify Characteristic을 구독하여 실시간 전력량 수신 대기.
 
-### (3) BLE ScanRecord 기반 기기 모델 자동 식별
-앱은 BLE Advertising 패킷(`ScanRecord`)의 Hex 바이트열에서 **18~22번째 인덱스(`substring(18, 22)`)**를 추출하여 하드웨어 모델을 판별합니다.
+### (3) BLE ScanRecord 기반 기기 모델 자동 식별 (`ScanBluetoothViewModel.java`)
+공식 앱은 BLE Advertising 패킷(`ScanRecord`)의 Hex 바이트열에서 **18~22번째 인덱스(`substring(18, 22)`)**를 추출하여 하드웨어 모델 코드를 판별합니다.
 
-| Model Code (Hex) | ASCII 문자 | 대응 시리즈 / 모드 | 지원 채널 및 특징 |
+| Model Code (Hex) | ASCII 문자 | 대응 시리즈 / 모드 | 지원 채널 및 도구 클래스 |
 | :--- | :--- | :--- | :--- |
-| `5745` | `"WE"` | **HJ 시리즈 (Legacy)** | 기본 4CH RGBW / RGB-UV (`StringTools`) |
-| `5746` | `"WF"` | **Mode 1 (WEK 시리즈)** | 담수 수초 4CH RGB-UV (24V / 36V) (`StringOneTools`) |
-| `5747` | `"WG"` | **Mode 2 (Series 4)** | 해수/산호 5CH (UV, Violet, DeepBlue, LightBlue, White) (`StringTwoTools`) |
-| `5748` | `"WH"` | **Mode 3 / 5 (Series 5)** | 7CH WRGB+WW+W+CW / 10CH 풀스펙트럼 (`StringThreeTools`, `StringFiveTools`) |
-| `5749` | `"WI"` | **Mode 6 (Series 6)** | 2CH 색온도 조명 (Warm White, Cool White) (`StringSixTools`) |
+| `5745` | `"WE"` | **HJ 시리즈 (Legacy)** | 기본 4CH RGBW / RGB-UV (`StringTools.java`) |
+| `5746` | `"WF"` | **Mode 1 (WEK 시리즈)** | 담수 수초 4CH RGB-UV (24V / 36V) (`StringOneTools.java`) |
+| `5747` | `"WG"` | **Mode 2 (Series 4)** | 해수/산호 5CH (UV, Violet, DeepBlue, LightBlue, White) (`StringTwoTools.java`) |
+| `5748` | `"WH"` | **Mode 3 / 5 (Series 5)** | 7CH WRGB+WW+W+CW / 10CH 풀스펙트럼 (`StringThreeTools.java`, `StringFiveTools.java`) |
+| `5749` | `"WI"` | **Mode 6 (Series 6)** | 2CH 색온도 CCT 조명 (Warm White, Cool White) (`StringSixTools.java`) |
 | `5750` | `"WP"` | **Series 7** | 차세대 확장 모델 |
-| `5751` | `"WQ"` | **Model 8 (Series 8)** | 스마트 수류 모터 / 웨이브메이커 (`StringEightTools`) |
-| `5752` | `"WR"` | **Model 9 (Series 9)** | 5CH RGB-UV-W 조명 (`StringNineTools`) |
-| `5755` / etc. | - | **스마트 플러그 (Spile)** | 6구 독립 타이머 소켓 & 전력량계 (`SpileModel`) |
+| `5751` | `"WQ"` | **Model 8 (Series 8)** | 스마트 수류 모터 / 웨이브메이커 (`StringEightTools.java`) |
+| `5752` | `"WR"` | **Model 9 (Series 9)** | 5CH RGB-UV-W 조명 (`StringNineTools.java`) |
+| `5755` / etc. | - | **스마트 플러그 (Spile)** | 6구 독립 타이머 소켓 & 전력량계 (`SpileModel.java`) |
 
 ---
 
@@ -58,12 +58,35 @@ WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **0000FFE0 시�
 > MCU는 시간 바이트를 **BCD(Binary-Coded Decimal)**로 해석하므로, 십진수 18시는 `0x18`(십진수 24)로 전송해야 합니다.
 
 ### (3) 디바이스 이름 변경 커맨드 (`ADV_NAME`)
-* **형식**: `!%!%:ADV_NAME:[NewDeviceName]` 문자열을 UTF-8 바이트 배열로 변환하여 Write Characteristic으로 송신.
+* **형식**: `!%!%:ADV_NAME:[NewDeviceName]` 문자열을 UTF-8 바이트 배열로 변환하여 **`0000ffe3` (또는 `0000fff2`)** Characteristic으로 송신.
 * **예시**: `WeekAqua L800`으로 변경 시 `!%!%:ADV_NAME:WeekAqua L800` 전송.
 
 ---
 
-## 3. 모델별 프로토콜 세부 명세
+## 3. 핵심 모드 제어 및 점등/소등 시퀀스 (`EquipmentListActivity.java`)
+
+WeekAqua MCU는 내부 상태 머신(State Machine)에 따라 다음과 같은 패킷 시퀀스를 순차 수신해야 정상 동작합니다:
+
+### (1) 하드웨어 스케줄 모드 (Mode 2) 활성화 시퀀스
+MCU 내부 EEPROM에 저장된 8구간/12구간 일주기 램프 스케줄 엔진을 가동합니다:
+1. `FDF3 555555555555` (Ramp 엔진 초기화/트리거)
+2. `FDF2 555555555555` (Mode 2 스케줄 모드 활성화)
+
+### (2) 실시간 라이브 수동 모드 (Mode 1) 활성화 시퀀스
+HA 다이나믹 스케줄러 또는 실시간 슬라이더 조작 시 사용됩니다:
+1. `FDF1 555555555555` (Mode 1 라이브 모드 전환)
+2. `FBF9 [R] [G] [B] [UV/W] 5555` (실시간 목표 스펙트럼 전송)
+3. `FEF9 00 00 24 00 00 00` (**24시간 타이머 창 개방**: `00:00 ~ 24:00`, Ramp 0h)
+> **💡 핵심 발견**: MCU 하드웨어는 Mode 1에서도 내부 타이머 창(`FEF9` 또는 `FEEF`)이 열려 있지 않으면 시간 만료로 판단하고 출력을 차단(소등)합니다. 따라서 `FEF9 00:00~24:00` 24시간 개방 패킷이 함께 전송되어야 24시간 연속 라이브 제어가 가능합니다.
+
+### (3) 조명 소등 (Power OFF) 제어
+WeekAqua 프로토콜에는 별도의 하드웨어 전원 차단 명령이 없으며, **현재 활성화된 모드에 모든 채널 `0x00` (0%) 스펙트럼 패킷을 전송**하여 완전 소등을 수행합니다:
+* **4CH RGBW / RGB-UV**: `FBF9 00 00 00 00 55 55` (또는 `FBEF 00 00 00 00 55 55`)
+* **5CH / 6CH / 10CH**: `FBFD 00 00 00 00 00 00 00 00 00 00 55 55`
+
+---
+
+## 4. 모델별 프로토콜 세부 명세
 
 ### (1) Legacy / Standard (HJ 시리즈 / 5745) - `StringTools.java`
 * **채널 (4CH)**: Red, Green, Blue, UV (또는 White) + Cooling Fan
@@ -87,9 +110,6 @@ WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **0000FFE0 시�
   * `FBEF` + `[R]` + `[G]` + `[B]` + `[UV]` + `5555`
 * **쿨링팬 속도 패킷 (`F9`)**:
   * `F9` + `[Fan(1B: 0~235)]` + `555555555555`
-* **하드웨어 전원/타이머 ON/OFF 스위치 패킷 (`F6`)**:
-  * 전원 ON / 점등 활성화: `F6F1555555555555` (`StringOneTools.java: getModeSettingSwitchTime(1)`)
-  * 전원 OFF / 강제 소등: `F6F2555555555555` (`StringOneTools.java: getModeSettingSwitchTime(0)`)
 * **모드 설정 시간 패킷 (`FEEF`)**:
   * `FEEF` + `BCD[StartHH]` + `BCD[Startmm]` + `BCD[EndHH]` + `BCD[Endmm]` + `5555`
 
@@ -153,7 +173,7 @@ WeekAqua 기기는 장착된 BLE 칩셋 및 펌웨어에 따라 **0000FFE0 시�
 
 ---
 
-## 4. 스마트 플러그 (Spile) 통신 프로토콜
+## 5. 스마트 플러그 (Spile) 통신 프로토콜
 
 스마트 플러그(멀티탭)는 6구 독립 소켓별로 각각 6개의 스케줄 태스크를 관리하며, 누적 전력량(kWh)을 실시간 Notify 수신합니다.
 
@@ -191,7 +211,7 @@ public static double ParseEnergyKwh(byte[] data)
 
 ---
 
-## 5. 채널별 전력 가중치 및 상한선 (Max Power Limit) 공식
+## 6. 채널별 전력 가중치 및 상한선 (Max Power Limit) 공식
 
 WeekAqua 앱은 SMPS 전원 공급 장치와 LED 기판의 과부하 및 발열을 방지하기 위해 채널별 가중 합산 전력이 $100.0\%$를 넘지 않도록 제한합니다.
 
@@ -209,7 +229,7 @@ $$\text{Total Power (\%)} = (CH_1\% \times 0.41) + (CH_2\% \times 0.42) + (CH_3\
 
 ---
 
-## 6. 스케줄 슬롯 개수 제한 및 자정(24:00) 무암전 규격
+## 7. 스케줄 슬롯 개수 제한 및 자정(24:00) 무암전 규격
 
 ### (1) 기기 시리즈별 MCU 최대 슬롯 한도
 * **4채널 일반/구형 모델 (Mode 1, 2, 6, 8)**:
@@ -224,5 +244,5 @@ $$\text{Total Power (\%)} = (CH_1\% \times 0.41) + (CH_2\% \times 0.42) + (CH_3\
 
 ---
 
-## 7. 전송 딜레이 및 패킷 큐 스케줄링
+## 8. 전송 딜레이 및 패킷 큐 스케줄링
 다수의 타이머 및 스펙트럼 슬롯 패킷을 연속 전송할 때 BLE 칩셋의 FIFO 버퍼 오버플로우를 방지하기 위해, 모든 Write 명령은 **500ms(0.5초) 간격의 큐(Queue) 딜레이**를 거쳐 순차적으로 송신해야 합니다.
