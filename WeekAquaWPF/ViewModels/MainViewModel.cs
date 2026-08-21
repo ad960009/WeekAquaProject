@@ -567,6 +567,7 @@ namespace WeekAquaWPF.ViewModels
         public ICommand SyncAllRampSlotsCommand { get; }
         public ICommand ApplyAutoScheduleTimesCommand { get; }
         public ICommand ClearLogCommand { get; }
+        public ICommand CopyLogsCommand { get; }
 
         public MainViewModel()
         {
@@ -588,6 +589,7 @@ namespace WeekAquaWPF.ViewModels
             SyncAllRampSlotsCommand = new RelayCommand(SyncAllRampSlots);
             ApplyAutoScheduleTimesCommand = new RelayCommand(ApplyAutoScheduleTimes);
             ClearLogCommand = new RelayCommand(ClearLog);
+            CopyLogsCommand = new RelayCommand(CopyLogs);
 
             _appSettings = SettingsManager.LoadSettings();
 
@@ -1079,7 +1081,7 @@ namespace WeekAquaWPF.ViewModels
         {
             byte ch4 = UvByte > 0 ? UvByte : WhiteByte;
             byte[] packet = Is4ChannelRgbUv
-                ? new byte[] { 0xFB, 0xEF, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
+                ? new byte[] { 0xFB, 0xF9, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
                 : WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
 
             if (_currentHardwareMode != 1 || forceModeSequence)
@@ -1433,7 +1435,30 @@ namespace WeekAquaWPF.ViewModels
 
         private void ClearLog()
         {
-            LogEntries.Clear();
+            App.Current.Dispatcher.Invoke(() => LogEntries.Clear());
+        }
+
+        private void CopyLogs()
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (var log in LogEntries)
+                {
+                    sb.AppendLine($"[{log.FormattedTime}] [{log.DirectionString}] {log.Message} {log.HexData}");
+                }
+                
+                App.Current.Dispatcher.Invoke(() => 
+                {
+                    System.Windows.Clipboard.SetText(sb.ToString());
+                });
+                
+                AddLog(LogDirection.Info, "Logs copied to clipboard.");
+            }
+            catch (Exception ex)
+            {
+                AddLog(LogDirection.Error, $"Failed to copy logs: {ex.Message}");
+            }
         }
 
         private void OnDeviceDiscovered(BleDeviceInfo device)

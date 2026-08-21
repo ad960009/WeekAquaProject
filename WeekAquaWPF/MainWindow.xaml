@@ -685,7 +685,10 @@
 
                         <Grid Grid.Row="0" Margin="0,0,0,8">
                             <TextBlock Text="🖥️ Raw BLE Packet Log" FontSize="16" FontWeight="Bold" Foreground="#38BDF8"/>
-                            <Button Content="Clear" Command="{Binding ClearLogCommand}" HorizontalAlignment="Right" Background="#475569" Padding="8,2"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Copy" Command="{Binding CopyLogsCommand}" Background="#0284C7" Padding="8,2" Margin="0,0,5,0" ToolTip="Copy all logs to clipboard"/>
+                                <Button Content="Clear" Command="{Binding ClearLogCommand}" Background="#475569" Padding="8,2"/>
+                            </StackPanel>
                         </Grid>
 
                         <ListBox Grid.Row="1" ItemsSource="{Binding LogEntries}" Background="#09090B" BorderBrush="#27272A" Foreground="#F4F4F5">

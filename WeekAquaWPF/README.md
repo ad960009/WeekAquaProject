@@ -8,6 +8,13 @@ WeekAqua 스마트 수초 조명 및 스마트 플러그 디바이스를 Windows
 
 ---
 
+## 🔌 호환 및 테스트된 기기 (Tested Devices)
+
+본 프로젝트는 다음과 같은 하드웨어 펌웨어 환경에서 직접 테스트 및 검증되었습니다.
+- **B3.0-M800Pro-18** (4-Channel RGB/UV, Legacy 5745 Protocol Mode)
+
+---
+
 ## 🌟 주요 기능 (Features)
 
 1. **Bluetooth Low Energy (BLE) 자동 검색 및 스마트 연결**

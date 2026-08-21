@@ -4,6 +4,13 @@
 
 ---
 
+## 🔌 호환 및 테스트된 기기 (Tested Devices)
+
+본 프로토콜 명세서에 정의된 패킷 구조 및 동작 흐름은 다음과 같은 실제 하드웨어 펌웨어 환경에서 교차 검증 및 테스트되었습니다.
+- **B3.0-M800Pro-18** (4-Channel RGB/UV, Legacy 5745 Protocol Mode)
+
+---
+
 ## 1. 블루투스 식별자 (UUID) 및 통신 인프라
 
 ### (1) Service 및 Characteristic UUID 명세

@@ -372,17 +372,27 @@ namespace WeekAquaWPF.Protocol
         /// </summary>
         public static List<byte[]> BuildLiveModeSequence(byte[] spectrumPacket)
         {
-            return new List<byte[]>
+            var seq = new List<byte[]>
             {
                 // 1. Switch MCU to Mode 1 (Live Spectrum Output)
                 new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 },
                 // 2. Target Spectrum
-                spectrumPacket,
-                // 3. Open 24h timer window for 5746/M-series (FEEF 00:00 ~ 24:00) to clear overrides
-                new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x24, 0x00, 0x55, 0x55 },
-                // 4. Open 24h timer window (00:00 ~ 24:00, Enabled, Ramp 0h)
-                new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x01, 0x00 }
+                spectrumPacket
             };
+            
+            // 3. Open 24h timer window to prevent MCU from automatically dimming/turning off the light
+            if (spectrumPacket.Length >= 2 && spectrumPacket[1] == 0xEF)
+            {
+                // M-Series / 5746 specific timer packet
+                seq.Add(new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x24, 0x00, 0x55, 0x55 });
+            }
+            else
+            {
+                // Standard timer packet
+                seq.Add(new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x01, 0x00 });
+            }
+            
+            return seq;
         }
 
         /// <summary>
