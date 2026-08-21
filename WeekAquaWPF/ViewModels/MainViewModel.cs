@@ -579,7 +579,7 @@ namespace WeekAquaWPF.ViewModels
             ScanCommand = new RelayCommand(StartScan, () => !IsConnected);
             ConnectCommand = new RelayCommand(ConnectToSelectedDevice, () => SelectedDevice != null && !IsConnected);
             DisconnectCommand = new RelayCommand(DisconnectDevice, () => IsConnected);
-            SendLiveSpectrumCommand = new RelayCommand(SendLiveSpectrum);
+            SendLiveSpectrumCommand = new RelayCommand(() => SendLiveSpectrum(false));
             SendFanSpeedCommand = new RelayCommand(SendFanSpeed);
             SyncRtcTimeCommand = new RelayCommand(SyncRtcTime);
             SelectModeCommand = new RelayCommand(param => SelectMode(param));
@@ -1049,9 +1049,12 @@ namespace WeekAquaWPF.ViewModels
             });
         }
 
+        private int _currentHardwareMode = 0;
+
         private async void ConnectToSelectedDevice()
         {
             if (SelectedDevice == null) return;
+            _currentHardwareMode = 0;
             IsScanning = false;
             ConnectionStatusText = "Connecting...";
             await _bleService.ConnectAsync(SelectedDevice.BluetoothAddress);
@@ -1059,6 +1062,7 @@ namespace WeekAquaWPF.ViewModels
 
         private void DisconnectDevice()
         {
+            _currentHardwareMode = 0;
             SaveCurrentDeviceConfig();
             _bleService.Disconnect();
         }
@@ -1071,10 +1075,27 @@ namespace WeekAquaWPF.ViewModels
             }
         }
 
-        private void SendLiveSpectrum()
+        private void SendLiveSpectrum(bool forceModeSequence = false)
         {
-            byte[] packet = WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
-            _bleService.EnqueueWritePacket(packet, "Live Spectrum (FBF9)");
+            if (_currentHardwareMode != 1 || forceModeSequence)
+            {
+                _currentHardwareMode = 1;
+                var modePackets = WeekAquaProtocol.BuildLiveModeSequence(CurrentModelCode, Is4ChannelRgbUv);
+                foreach (var pkt in modePackets)
+                {
+                    string desc = WeekAquaProtocol.DescribePacket(pkt);
+                    _bleService.EnqueueWritePacket(pkt, desc);
+                }
+                AddLog(LogDirection.Info, "Enqueued Mode 1 transition sequence for Live Manual Spectrum.");
+            }
+
+            byte ch4 = UvByte > 0 ? UvByte : WhiteByte;
+            byte[] packet = Is4ChannelRgbUv
+                ? new byte[] { 0xFB, 0xEF, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
+                : WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
+
+            string specDesc = WeekAquaProtocol.DescribePacket(packet);
+            _bleService.EnqueueWritePacket(packet, specDesc);
             SaveCurrentDeviceConfig();
         }
 
@@ -1196,6 +1217,7 @@ namespace WeekAquaWPF.ViewModels
             }
 
             // 3. Mandatory: Switch MCU to Mode 2 (Advanced Custom Ramp Schedule Mode)
+            _currentHardwareMode = 2;
             byte[] modePacket = WeekAquaProtocol.BuildModePacket(2);
             _bleService.EnqueueWritePacket(modePacket, "Activate Mode 2 (FDF2)");
             enqueuedCount += 1;

@@ -367,6 +367,92 @@ namespace WeekAquaWPF.Protocol
         }
 
         /// <summary>
+        /// Returns the sequence of packets to unlock MCU hardware mode from Mode 2 (Schedule) to Mode 1 (Live Spectrum).
+        /// </summary>
+        public static List<byte[]> BuildLiveModeSequence(string modelCode = "", bool is4ChRgbUv = false)
+        {
+            var list = new List<byte[]>
+            {
+                // 1. Switch to Mode 1 (Spectrum / Sunrise-Sunset Mode)
+                new byte[] { 0xFD, 0xF1, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 }
+            };
+
+            if (is4ChRgbUv || modelCode == "5746")
+            {
+                // 2. Activate Spectrum Sub-mode
+                list.Add(new byte[] { 0xFD, 0xF4, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
+                // 3. Set full day time window (00:00 - 23:59) so timer doesn't shut down LEDs
+                list.Add(new byte[] { 0xFE, 0xEF, 0x00, 0x00, 0x23, 0x59, 0x00, 0x00 });
+                // 4. Disable hardware timer switch (Instant live manual output)
+                list.Add(new byte[] { 0xF6, 0xF2, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55 });
+            }
+            else
+            {
+                // Legacy full day time window (00:00 - 24:00)
+                list.Add(new byte[] { 0xFE, 0xF9, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00 });
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Human-readable disassembler for WeekAqua BLE packets.
+        /// </summary>
+        public static string DescribePacket(byte[] packet)
+        {
+            if (packet == null || packet.Length < 2) return "Unknown Packet";
+            byte p0 = packet[0];
+            byte p1 = packet[1];
+            if (packet.Length >= 8 && p0 == 0xFB && (p1 == 0xF9 || p1 == 0xEF))
+            {
+                int r = (int)Math.Round(ByteToPercent(packet[2]));
+                int g = (int)Math.Round(ByteToPercent(packet[3]));
+                int b = (int)Math.Round(ByteToPercent(packet[4]));
+                int ch4 = (int)Math.Round(ByteToPercent(packet[5]));
+                string hdr = p1 == 0xEF ? "FBEF" : "FBF9";
+                return $"SetSpectrum [{hdr}] (R:{r}% G:{g}% B:{b}% CH4:{ch4}%)";
+            }
+            if (p0 == 0xFF) return $"Sync RTC Time [0xFF] ({packet[1]:X2}:{packet[2]:X2}:{packet[3]:X2})";
+            if (p0 == 0xFD)
+            {
+                string desc = p1 switch
+                {
+                    0xF1 => "Mode 1 (Live/Spectrum)",
+                    0xF2 => "Mode 2 (Ramp Schedule)",
+                    0xF3 => "Mode 3 (Ramp Init)",
+                    0xF4 => "Mode 1 Sub (Activate Spectrum)",
+                    0xF5 => "Mode 5",
+                    _ => $"0x{p1:X2}"
+                };
+                return $"SetMode [FD{p1:X2}] ({desc})";
+            }
+            if (p0 == 0xFE)
+            {
+                if (p1 == 0xEF) return $"SetTimer [FEEF] ({packet[2]:X2}:{packet[3]:X2} - {packet[4]:X2}:{packet[5]:X2})";
+                if (p1 == 0xF9) return $"SetTimer [FEF9] ({packet[2]:X2}:{packet[3]:X2} - {packet[4]:X2}:{packet[5]:X2})";
+                int slot = p1 & 0x0F;
+                return $"SetRampTime [FE{p1:X2}] Slot #{slot}";
+            }
+            if (p0 == 0xFB)
+            {
+                int slot = p1 & 0x0F;
+                return $"SetRampSpectrum [FB{p1:X2}] Slot #{slot}";
+            }
+            if (p0 == 0xFC)
+            {
+                int pct = (int)Math.Round(ByteToPercent(p1));
+                return $"SetFanSpeed [FC] ({pct}%)";
+            }
+            if (p0 == 0xF6)
+            {
+                string state = p1 == 0xF1 ? "ON" : (p1 == 0xF2 ? "OFF (Manual)" : $"0x{p1:X2}");
+                return $"TimerSwitch [F6{p1:X2}] ({state})";
+            }
+            if (p0 == 0xF0) return "InitHandshake [F0]";
+            return $"Cmd 0x{p0:X2} 0x{p1:X2}";
+        }
+
+        /// <summary>
         /// Parses Smart Plug energy monitoring RX bytes (kWh).
         /// Formula: rawVal * 4.6566128730773926E-8
         /// </summary>
