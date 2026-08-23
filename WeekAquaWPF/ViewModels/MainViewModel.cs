@@ -1079,7 +1079,7 @@ namespace WeekAquaWPF.ViewModels
 
         private void SendLiveSpectrum(bool forceModeSequence = false)
         {
-            byte ch4 = UvByte > 0 ? UvByte : WhiteByte;
+            byte ch4 = Is4ChannelRgbUv ? UvByte : WhiteByte;
             byte[] packet = Is4ChannelRgbUv
                 ? new byte[] { 0xFB, 0xF9, RedByte, GreenByte, BlueByte, ch4, 0x55, 0x55 }
                 : WeekAquaProtocol.BuildLiveSpectrumPacket(RedByte, GreenByte, BlueByte, WhiteByte, UvByte, VioletByte);
