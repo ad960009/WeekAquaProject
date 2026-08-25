@@ -369,14 +369,58 @@ namespace WeekAquaWPF.Services
             DataReceived?.Invoke(data);
         }
 
+        private readonly object _queueLock = new object();
+
         /// <summary>
         /// Enqueues a packet to be written with a 500ms delay between consecutive packets (Protocol requirement).
+        /// When a live spectrum packet is enqueued, stale pending live spectrum packets in the queue are replaced
+        /// to ensure instant slider responsiveness without packet lag.
         /// </summary>
-        public void EnqueueWritePacket(byte[] packetData, string? description = null)
+        public void EnqueueWritePacket(byte[] packetData, string? description = null, bool isLiveSpectrum = false)
         {
             if (packetData == null || packetData.Length == 0) return;
-            _writeQueue.Enqueue((packetData, description));
-            _queueSemaphore.Release();
+
+            bool isLive = isLiveSpectrum || IsLiveSpectrumPacket(packetData);
+
+            lock (_queueLock)
+            {
+                if (isLive)
+                {
+                    var remaining = new List<(byte[] Data, string? Description)>();
+                    int droppedCount = 0;
+
+                    while (_writeQueue.TryDequeue(out var item))
+                    {
+                        if (IsLiveSpectrumPacket(item.Data))
+                        {
+                            droppedCount++;
+                        }
+                        else
+                        {
+                            remaining.Add(item);
+                        }
+                    }
+
+                    foreach (var item in remaining)
+                    {
+                        _writeQueue.Enqueue(item);
+                    }
+
+                    // Decrement semaphore counter for dropped stale packets
+                    for (int i = 0; i < droppedCount; i++)
+                    {
+                        _queueSemaphore.Wait(0);
+                    }
+                }
+
+                _writeQueue.Enqueue((packetData, description));
+                _queueSemaphore.Release();
+            }
+        }
+
+        private static bool IsLiveSpectrumPacket(byte[]? data)
+        {
+            return data != null && data.Length >= 8 && data[0] == 0xFB && (data[1] == 0xF9 || data[1] == 0xEF);
         }
 
         private void StartQueueProcessor()
